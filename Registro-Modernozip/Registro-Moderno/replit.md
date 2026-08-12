@@ -12,7 +12,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
-- Required authentication setup: provision Replit-managed Clerk so the frontend receives `VITE_CLERK_PUBLISHABLE_KEY` and the API receives its Clerk keys.
+- Authentication: Replit-managed Clerk is provisioned for this Repl; the frontend uses `VITE_CLERK_PUBLISHABLE_KEY` and the API uses its Clerk keys from Secrets.
 
 ## Stack
 
