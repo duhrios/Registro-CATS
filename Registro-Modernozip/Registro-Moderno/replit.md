@@ -19,7 +19,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - pnpm workspaces, Node.js 20+, TypeScript 5.9
 - API: Express 5
 - DB: Supabase Postgres via the Supabase JavaScript client
-- Validation: Zod (`zod/v4`), `drizzle-zod`
+- Validation: Zod (`zod/v4`)
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 

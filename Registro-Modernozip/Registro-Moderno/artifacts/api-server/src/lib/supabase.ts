@@ -9,10 +9,27 @@ if (!url || !/^https?:\/\//i.test(url) || !serviceRoleKey) {
   );
 }
 
+// The API only uses Supabase Auth and PostgREST. Avoid initializing a
+// WebSocket transport on Node 20, where native WebSocket is unavailable.
+class DisabledWebSocket {
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSING = 2;
+  static readonly CLOSED = 3;
+  readyState = DisabledWebSocket.CLOSED;
+  close() {}
+  send() {}
+  addEventListener() {}
+  removeEventListener() {}
+}
+
 export const supabase = createClient(url, serviceRoleKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  realtime: {
+    transport: DisabledWebSocket as never,
   },
 });
 
