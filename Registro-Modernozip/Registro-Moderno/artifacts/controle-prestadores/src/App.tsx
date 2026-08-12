@@ -39,7 +39,7 @@ function LoadingScreen({ message = 'Carregando acesso seguro…' }: { message?: 
   );
 }
 
-function AuthScreen() {
+function AuthScreen({ isMockMode = false }: { isMockMode?: boolean }) {
   const client = useSupabase();
   const [mode, setMode] = useState<'sign-in' | 'bootstrap'>('sign-in');
   const [username, setUsername] = useState('');
@@ -100,6 +100,11 @@ function AuthScreen() {
               ? 'Entre com seu usuário e senha para registrar prestadores e consultar as entradas da escola.'
               : 'Crie o administrador inicial para liberar o acesso à equipe.'}
           </p>
+          {isMockMode && (
+            <p className="mt-3 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-xs text-accent-foreground">
+              Modo demonstração local · usuário: <strong>admin</strong> · senha: <strong>admin123</strong>
+            </p>
+          )}
         </div>
 
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
@@ -166,7 +171,7 @@ function AuthScreen() {
   );
 }
 
-function AccessGate() {
+function AccessGate({ isMockMode }: { isMockMode: boolean }) {
   const client = useSupabase();
   const [session, setSession] = useState<Session | null>(null);
 
@@ -184,7 +189,7 @@ function AccessGate() {
     };
   }, [client]);
 
-  if (!session) return <AuthScreen />;
+  if (!session) return <AuthScreen isMockMode={isMockMode} />;
 
   return <Router isAdmin={session.user.user_metadata?.role === 'admin'} />;
 }
@@ -212,7 +217,7 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-function AuthenticatedApp() {
+function AuthenticatedApp({ isMockMode }: { isMockMode: boolean }) {
   const client = useSupabase();
   useEffect(() => {
     setAuthTokenGetter(async () => {
@@ -226,7 +231,7 @@ function AuthenticatedApp() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={basePath}>
-          <AccessGate />
+          <AccessGate isMockMode={isMockMode} />
         </WouterRouter>
         <Toaster />
       </TooltipProvider>
@@ -235,14 +240,14 @@ function AuthenticatedApp() {
 }
 
 function App() {
-  const [config, setConfig] = useState<{ url: string; anonKey: string } | null>(null);
+  const [config, setConfig] = useState<{ url: string; anonKey: string; mockMode?: boolean } | null>(null);
   const [configError, setConfigError] = useState('');
 
   useEffect(() => {
     fetch('/api/config')
       .then(async (response) => {
         if (!response.ok) throw new Error('Não foi possível carregar a configuração do Supabase.');
-        return response.json() as Promise<{ url: string; anonKey: string }>;
+        return response.json() as Promise<{ url: string; anonKey: string; mockMode?: boolean }>;
       })
       .then(setConfig)
       .catch((error: Error) => setConfigError(error.message));
@@ -257,8 +262,8 @@ function App() {
   if (!client) return <LoadingScreen />;
 
   return (
-    <SupabaseProvider client={client}>
-      <AuthenticatedApp />
+      <SupabaseProvider client={client}>
+        <AuthenticatedApp isMockMode={config?.mockMode === true || config.url === 'http://mock.local'} />
     </SupabaseProvider>
   );
 }
