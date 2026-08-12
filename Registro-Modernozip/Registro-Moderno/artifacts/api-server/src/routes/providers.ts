@@ -1,7 +1,6 @@
-import { Router, type IRouter, type Request, type Response } from "express";
-import { getAuth } from "@clerk/express";
-import { and, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
-import { db, providersTable, visitsTable } from "@workspace/db";
+import { Router, type IRouter, type Response } from "express";
+import { supabase } from "../lib/supabase";
+import type { AuthenticatedRequest } from "../middlewares/supabaseAuthMiddleware";
 import {
   CreateProviderBody,
   CreateProviderResponse,
@@ -18,46 +17,91 @@ import {
   UpdateProviderParams,
   UpdateProviderResponse,
 } from "@workspace/api-zod";
-import { persistPhoto, photoUrl } from "../lib/photoStorage";
+
+type ProviderRow = {
+  id: number;
+  name: string;
+  rg: string;
+  company: string;
+  default_service: string;
+  photo_data: string | null;
+  created_at: string;
+  last_visit_at: string | null;
+};
+
+type VisitRow = {
+  id: number;
+  provider_id: number;
+  service: string;
+  entered_at: string;
+};
 
 const router: IRouter = Router();
 
-function getStaffId(req: Request, res: Response): string | null {
-  const id = getAuth(req).userId;
-  if (!id) {
+function getStaffId(req: AuthenticatedRequest, res: Response): string | null {
+  if (!req.staffId) {
     res.status(401).json({ error: "Faça login para acessar os registros." });
     return null;
   }
-  return id;
+  return req.staffId;
 }
 
-function providerResponse(provider: typeof providersTable.$inferSelect, visitCount: number) {
+function providerResponse(provider: ProviderRow, visitCount: number) {
   return {
-    ...provider,
-    photoData: photoUrl(provider.photoData),
-    lastVisitAt: provider.lastVisitAt?.toISOString() ?? null,
+    id: provider.id,
+    name: provider.name,
+    rg: provider.rg,
+    company: provider.company,
+    defaultService: provider.default_service,
+    photoData: provider.photo_data,
+    createdAt: provider.created_at,
+    lastVisitAt: provider.last_visit_at,
     visitCount,
   };
 }
 
-async function countVisits(providerId: number): Promise<number> {
-  const [result] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(visitsTable)
-    .where(eq(visitsTable.providerId, providerId));
-  return result?.count ?? 0;
+async function countVisits(providerId: number) {
+  const { count, error } = await supabase
+    .from("provider_visits")
+    .select("id", { count: "exact", head: true })
+    .eq("provider_id", providerId);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 async function providerWithCount(id: number) {
-  const [provider] = await db
-    .select()
-    .from(providersTable)
-    .where(eq(providersTable.id, id));
-  if (!provider) return null;
-  return providerResponse(provider, await countVisits(id));
+  const { data, error } = await supabase
+    .from("providers")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle<ProviderRow>();
+  if (error) throw error;
+  return data ? providerResponse(data, await countVisits(id)) : null;
 }
 
-router.get("/providers", async (req, res): Promise<void> => {
+async function providerMap(ids: number[]) {
+  if (!ids.length) return new Map<number, ProviderRow>();
+  const { data, error } = await supabase
+    .from("providers")
+    .select("*")
+    .in("id", ids);
+  if (error) throw error;
+  return new Map((data as ProviderRow[]).map((provider) => [provider.id, provider]));
+}
+
+function visitResponse(visit: VisitRow, provider: ProviderRow) {
+  return {
+    id: visit.id,
+    providerId: provider.id,
+    providerName: provider.name,
+    company: provider.company,
+    service: visit.service,
+    photoData: provider.photo_data,
+    enteredAt: visit.entered_at,
+  };
+}
+
+router.get("/providers", async (req: AuthenticatedRequest, res) => {
   if (!getStaffId(req, res)) return;
   const parsed = ListProvidersQueryParams.safeParse(req.query);
   if (!parsed.success) {
@@ -65,29 +109,26 @@ router.get("/providers", async (req, res): Promise<void> => {
     return;
   }
   const { search, limit } = parsed.data;
-  const providers = await db
-    .select()
-    .from(providersTable)
-    .where(
-      search
-        ? or(
-            ilike(providersTable.name, `%${search}%`),
-            ilike(providersTable.company, `%${search}%`),
-            ilike(providersTable.rg, `%${search}%`),
-          )
-        : undefined,
-    )
-    .orderBy(providersTable.name)
-    .limit(limit);
+  let query = supabase
+    .from("providers")
+    .select("*")
+    .order("name", { ascending: true })
+    .limit(limit) as any;
+  if (search) {
+    const safeSearch = search.replace(/[,%()]/g, " ");
+    query = query.or(`name.ilike.%${safeSearch}%,company.ilike.%${safeSearch}%,rg.ilike.%${safeSearch}%`);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
   const rows = await Promise.all(
-    providers.map(async (provider) =>
+    (data as ProviderRow[]).map(async (provider) =>
       providerResponse(provider, await countVisits(provider.id)),
     ),
   );
   res.json(ListProvidersResponse.parse(rows));
 });
 
-router.post("/providers", async (req, res): Promise<void> => {
+router.post("/providers", async (req: AuthenticatedRequest, res) => {
   const staffId = getStaffId(req, res);
   if (!staffId) return;
   const parsed = CreateProviderBody.safeParse(req.body);
@@ -95,30 +136,32 @@ router.post("/providers", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const existing = await db
-    .select({ id: providersTable.id })
-    .from(providersTable)
-    .where(eq(providersTable.rg, parsed.data.rg));
-  if (existing.length) {
+  const { data: existing, error: existingError } = await supabase
+    .from("providers")
+    .select("id")
+    .eq("rg", parsed.data.rg.trim())
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (existing) {
     res.status(409).json({ error: "Este RG já está cadastrado." });
     return;
   }
-  const [provider] = await db
-    .insert(providersTable)
-    .values({
+  const { data: provider, error } = await supabase
+    .from("providers")
+    .insert({
       name: parsed.data.name.trim(),
       rg: parsed.data.rg.trim(),
       company: parsed.data.company.trim(),
-      defaultService: parsed.data.defaultService.trim(),
-      photoData: await persistPhoto(parsed.data.photoData, staffId),
+      default_service: parsed.data.defaultService.trim(),
+      photo_data: parsed.data.photoData ?? null,
     })
-    .returning();
-  res.status(201).json(
-    CreateProviderResponse.parse(providerResponse(provider, 0)),
-  );
+    .select("*")
+    .single<ProviderRow>();
+  if (error) throw error;
+  res.status(201).json(CreateProviderResponse.parse(providerResponse(provider, 0)));
 });
 
-router.get("/providers/:id", async (req, res): Promise<void> => {
+router.get("/providers/:id", async (req: AuthenticatedRequest, res) => {
   if (!getStaffId(req, res)) return;
   const parsed = GetProviderParams.safeParse(req.params);
   if (!parsed.success) {
@@ -133,9 +176,8 @@ router.get("/providers/:id", async (req, res): Promise<void> => {
   res.json(GetProviderResponse.parse(provider));
 });
 
-router.patch("/providers/:id", async (req, res): Promise<void> => {
-  const staffId = getStaffId(req, res);
-  if (!staffId) return;
+router.patch("/providers/:id", async (req: AuthenticatedRequest, res) => {
+  if (!getStaffId(req, res)) return;
   const params = UpdateProviderParams.safeParse(req.params);
   const body = UpdateProviderBody.safeParse(req.body);
   if (!params.success || !body.success) {
@@ -145,135 +187,113 @@ router.patch("/providers/:id", async (req, res): Promise<void> => {
   const values = {
     ...(body.data.name !== undefined ? { name: body.data.name.trim() } : {}),
     ...(body.data.rg !== undefined ? { rg: body.data.rg.trim() } : {}),
-    ...(body.data.company !== undefined
-      ? { company: body.data.company.trim() }
-      : {}),
+    ...(body.data.company !== undefined ? { company: body.data.company.trim() } : {}),
     ...(body.data.defaultService !== undefined
-      ? { defaultService: body.data.defaultService.trim() }
+      ? { default_service: body.data.defaultService.trim() }
       : {}),
-    ...(body.data.photoData !== undefined
-      ? { photoData: await persistPhoto(body.data.photoData, staffId) }
-      : {}),
+    ...(body.data.photoData !== undefined ? { photo_data: body.data.photoData } : {}),
   };
-  const [provider] = await db
-    .update(providersTable)
-    .set(values)
-    .where(eq(providersTable.id, params.data.id))
-    .returning();
+  const { data: provider, error } = await supabase
+    .from("providers")
+    .update(values)
+    .eq("id", params.data.id)
+    .select("*")
+    .maybeSingle<ProviderRow>();
+  if (error) throw error;
   if (!provider) {
     res.status(404).json({ error: "Prestador não encontrado." });
     return;
   }
-  res.json(
-    UpdateProviderResponse.parse(
-      providerResponse(provider, await countVisits(provider.id)),
-    ),
-  );
+  res.json(UpdateProviderResponse.parse(providerResponse(provider, await countVisits(provider.id))));
 });
 
-router.get("/visits", async (req, res): Promise<void> => {
+router.get("/visits", async (req: AuthenticatedRequest, res) => {
   if (!getStaffId(req, res)) return;
   const parsed = ListVisitsQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const rows = await db
-    .select({
-      id: visitsTable.id,
-      providerId: providersTable.id,
-      providerName: providersTable.name,
-      company: providersTable.company,
-      service: visitsTable.service,
-      photoData: providersTable.photoData,
-      enteredAt: visitsTable.enteredAt,
+  const { data: visits, error } = await supabase
+    .from("provider_visits")
+    .select("*")
+    .order("entered_at", { ascending: false })
+    .limit(parsed.data.limit)
+    .returns<VisitRow[]>();
+  if (error) throw error;
+  const providers = await providerMap(visits.map((visit) => visit.provider_id));
+  const rows = visits
+    .map((visit) => {
+      const provider = providers.get(visit.provider_id);
+      return provider ? visitResponse(visit, provider) : null;
     })
-    .from(visitsTable)
-    .innerJoin(providersTable, eq(visitsTable.providerId, providersTable.id))
-    .orderBy(desc(visitsTable.enteredAt))
-    .limit(parsed.data.limit);
-  res.json(
-    ListVisitsResponse.parse(
-      rows.map((row) => ({ ...row, photoData: photoUrl(row.photoData) })),
-    ),
-  );
+    .filter((row): row is NonNullable<typeof row> => row !== null);
+  res.json(ListVisitsResponse.parse(rows));
 });
 
-router.post("/visits", async (req, res): Promise<void> => {
+router.post("/visits", async (req: AuthenticatedRequest, res) => {
   if (!getStaffId(req, res)) return;
   const parsed = CreateVisitBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [provider] = await db
-    .select()
-    .from(providersTable)
-    .where(eq(providersTable.id, parsed.data.providerId));
+  const { data: provider, error: providerError } = await supabase
+    .from("providers")
+    .select("*")
+    .eq("id", parsed.data.providerId)
+    .maybeSingle<ProviderRow>();
+  if (providerError) throw providerError;
   if (!provider) {
     res.status(404).json({ error: "Prestador não encontrado." });
     return;
   }
-  const [visit] = await db
-    .insert(visitsTable)
-    .values({
-      providerId: provider.id,
-      service: parsed.data.service.trim(),
-    })
-    .returning();
-  await db
-    .update(providersTable)
-    .set({ lastVisitAt: visit.enteredAt })
-    .where(eq(providersTable.id, provider.id));
-  res.status(201).json(
-    CreateVisitResponse.parse({
-      id: visit.id,
-      providerId: provider.id,
-      providerName: provider.name,
-      company: provider.company,
-      service: visit.service,
-      photoData: photoUrl(provider.photoData),
-      enteredAt: visit.enteredAt,
-    }),
-  );
+  const { data: visit, error } = await supabase
+    .from("provider_visits")
+    .insert({ provider_id: provider.id, service: parsed.data.service.trim() })
+    .select("*")
+    .single<VisitRow>();
+  if (error) throw error;
+  await supabase
+    .from("providers")
+    .update({ last_visit_at: visit.entered_at })
+    .eq("id", provider.id);
+  res.status(201).json(CreateVisitResponse.parse(visitResponse(visit, provider)));
 });
 
-router.get("/dashboard/summary", async (req, res): Promise<void> => {
+router.get("/dashboard/summary", async (req: AuthenticatedRequest, res) => {
   if (!getStaffId(req, res)) return;
   const start = new Date();
   start.setHours(0, 0, 0, 0);
-  const [providerCountRows, visitCountRows] = await Promise.all([
-    db.select({ totalProviders: sql<number>`count(*)::int` }).from(providersTable),
-    db
-      .select({ visitsToday: sql<number>`count(*)::int` })
-      .from(visitsTable)
-      .where(gte(visitsTable.enteredAt, start)),
-  ]);
-  const totalProviders = providerCountRows[0]?.totalProviders ?? 0;
-  const visitsToday = visitCountRows[0]?.visitsToday ?? 0;
-  const recent = await db
-    .select({
-      id: visitsTable.id,
-      providerId: providersTable.id,
-      providerName: providersTable.name,
-      company: providersTable.company,
-      service: visitsTable.service,
-      photoData: providersTable.photoData,
-      enteredAt: visitsTable.enteredAt,
-    })
-    .from(visitsTable)
-    .innerJoin(providersTable, eq(visitsTable.providerId, providersTable.id))
-    .orderBy(desc(visitsTable.enteredAt))
-    .limit(5);
+  const [{ count: totalProviders, error: providersError }, { count: visitsToday, error: visitsError }] =
+    await Promise.all([
+      supabase.from("providers").select("id", { count: "exact", head: true }),
+      supabase
+        .from("provider_visits")
+        .select("id", { count: "exact", head: true })
+        .gte("entered_at", start.toISOString()),
+    ]);
+  if (providersError) throw providersError;
+  if (visitsError) throw visitsError;
+  const { data: recent, error: recentError } = await supabase
+    .from("provider_visits")
+    .select("*")
+    .order("entered_at", { ascending: false })
+    .limit(5)
+    .returns<VisitRow[]>();
+  if (recentError) throw recentError;
+  const providers = await providerMap(recent.map((visit) => visit.provider_id));
   res.json(
     GetDashboardSummaryResponse.parse({
-      totalProviders,
-      visitsToday,
+      totalProviders: totalProviders ?? 0,
+      visitsToday: visitsToday ?? 0,
       currentlyExpected: 0,
-      recentVisits: recent.map((row) => ({
-        ...row,
-        photoData: photoUrl(row.photoData),
-      })),
+      recentVisits: recent
+        .map((visit) => {
+          const provider = providers.get(visit.provider_id);
+          return provider ? visitResponse(visit, provider) : null;
+        })
+        .filter((row): row is NonNullable<typeof row> => row !== null),
     }),
   );
 });

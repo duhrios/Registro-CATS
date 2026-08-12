@@ -1,6 +1,7 @@
-import { Bell, ClipboardList, Clock3, LayoutDashboard, Plus, Search, ShieldCheck, UsersRound } from 'lucide-react';
+import { Bell, Clock3, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, UsersRound } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
+import { useSupabase } from '@/lib/supabase-context';
 
 const navItems = [
   { href: '/', label: 'Visão geral', icon: LayoutDashboard },
@@ -10,6 +11,7 @@ const navItems = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const supabase = useSupabase();
   return (
     <div className="app-grain min-h-[100dvh] bg-background">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col bg-sidebar px-4 py-5 text-sidebar-foreground md:flex">
@@ -41,9 +43,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mb-3 flex items-center gap-2 text-sidebar-primary"><ShieldCheck className="h-4 w-4" /><span className="text-xs font-semibold">Portaria segura</span></div>
           <p className="text-[11px] leading-relaxed text-sidebar-foreground/55">Identidade registrada uma vez. Acesso simples em cada retorno.</p>
         </div>
-        <div className="mt-4 flex items-center gap-3 px-2">
+          <div className="mt-4 flex items-center gap-3 px-2">
           <div className="grid h-8 w-8 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">MA</div>
-          <div className="min-w-0"><div className="truncate text-xs font-semibold">Marina Alves</div><div className="truncate text-[10px] text-sidebar-foreground/45">Equipe da portaria</div></div>
+           <div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">Equipe da portaria</div><div className="truncate text-[10px] text-sidebar-foreground/45">Acesso Supabase</div></div>
+           <button type="button" onClick={() => supabase.auth.signOut()} aria-label="Sair" className="text-sidebar-foreground/50 transition-colors hover:text-sidebar-foreground"><LogOut className="h-4 w-4" /></button>
         </div>
       </aside>
       <div className="md:pl-[248px]">
