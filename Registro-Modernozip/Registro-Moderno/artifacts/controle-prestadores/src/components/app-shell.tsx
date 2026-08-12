@@ -1,4 +1,5 @@
-import { Bell, Clock3, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, UsersRound } from 'lucide-react';
+import { Bell, Clock3, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, UsersRound, UserPlus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useSupabase } from '@/lib/supabase-context';
@@ -9,9 +10,19 @@ const navItems = [
   { href: '/prestadores', label: 'Prestadores', icon: UsersRound },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, isAdmin }: { children: React.ReactNode; isAdmin: boolean }) {
   const [location] = useLocation();
   const supabase = useSupabase();
+  const [identity, setIdentity] = useState({ name: 'Equipe da portaria', username: 'Acesso administrativo' });
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      const metadata = data.session?.user.user_metadata ?? {};
+      setIdentity({
+        name: typeof metadata.full_name === 'string' && metadata.full_name ? metadata.full_name : 'Equipe da portaria',
+        username: typeof metadata.username === 'string' && metadata.username ? `@${metadata.username}` : 'Acesso administrativo',
+      });
+    });
+  }, [supabase]);
   return (
     <div className="app-grain min-h-[100dvh] bg-background">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col bg-sidebar px-4 py-5 text-sidebar-foreground md:flex">
@@ -39,13 +50,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="grid h-5 w-5 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground"><Plus className="h-3.5 w-3.5" /></div>
           Novo prestador
         </Link>
+        {isAdmin && <Link href="/admin" data-testid="link-nav-admin" className={cn('group mt-2 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground', location === '/admin' && 'bg-sidebar-primary/15 text-sidebar-primary')}><UserPlus className="h-[18px] w-[18px]" />Gerenciar integrantes</Link>}
         <div className="mt-auto rounded-2xl border border-sidebar-foreground/10 bg-sidebar-accent/60 p-4">
           <div className="mb-3 flex items-center gap-2 text-sidebar-primary"><ShieldCheck className="h-4 w-4" /><span className="text-xs font-semibold">Portaria segura</span></div>
           <p className="text-[11px] leading-relaxed text-sidebar-foreground/55">Identidade registrada uma vez. Acesso simples em cada retorno.</p>
         </div>
           <div className="mt-4 flex items-center gap-3 px-2">
           <div className="grid h-8 w-8 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">MA</div>
-           <div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">Equipe da portaria</div><div className="truncate text-[10px] text-sidebar-foreground/45">Acesso Supabase</div></div>
+            <div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">{identity.name}</div><div className="truncate text-[10px] text-sidebar-foreground/45">{identity.username}</div></div>
            <button type="button" onClick={() => supabase.auth.signOut()} aria-label="Sair" className="text-sidebar-foreground/50 transition-colors hover:text-sidebar-foreground"><LogOut className="h-4 w-4" /></button>
         </div>
       </aside>

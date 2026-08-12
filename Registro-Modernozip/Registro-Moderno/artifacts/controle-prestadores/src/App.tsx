@@ -10,6 +10,7 @@ import Cadastro from '@/pages/cadastro';
 import Historico from '@/pages/historico';
 import Prestadores from '@/pages/prestadores';
 import PrestadorDetalhe from '@/pages/prestador-detalhe';
+import AdminUsuarios from '@/pages/admin-usuarios';
 import { AppShell } from '@/components/app-shell';
 import {
   Route,
@@ -40,8 +41,8 @@ function LoadingScreen({ message = 'Carregando acesso seguro…' }: { message?: 
 
 function AuthScreen() {
   const client = useSupabase();
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
-  const [email, setEmail] = useState('');
+  const [mode, setMode] = useState<'sign-in' | 'bootstrap'>('sign-in');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -54,22 +55,30 @@ function AuthScreen() {
     setMessage('');
     setPending(true);
 
-    const result =
-      mode === 'sign-in'
-        ? await client.auth.signInWithPassword({ email, password })
-        : await client.auth.signUp({
-            email,
-            password,
-            options: { data: { full_name: name.trim() } },
-          });
-
-    setPending(false);
-    if (result.error) {
-      setError(result.error.message);
-      return;
-    }
-    if (mode === 'sign-up' && !result.data.session) {
-      setMessage('Confira seu e-mail para confirmar o cadastro antes de entrar.');
+    try {
+      const response = await fetch(`/api/auth/${mode === 'sign-in' ? 'login' : 'bootstrap'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, fullName: name }),
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        session?: { access_token: string; refresh_token: string };
+      };
+      if (!response.ok || !payload.session) {
+        setError(payload.error ?? 'Não foi possível concluir o acesso.');
+        return;
+      }
+      const { error: sessionError } = await client.auth.setSession(payload.session);
+      if (sessionError) {
+        setError(sessionError.message);
+        return;
+      }
+      if (mode === 'bootstrap') setMessage('Administrador criado. Bem-vindo ao Pórtico.');
+    } catch {
+      setError('Não foi possível conectar ao servidor. Tente novamente.');
+    } finally {
+      setPending(false);
     }
   }
 
@@ -84,19 +93,19 @@ function AuthScreen() {
             Pórtico · Controle escolar
           </p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight">
-            {mode === 'sign-in' ? 'Acesso da equipe' : 'Criar acesso da equipe'}
+            {mode === 'sign-in' ? 'Acesso da equipe' : 'Primeiro acesso'}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {mode === 'sign-in'
-              ? 'Entre para registrar prestadores e consultar as entradas da escola.'
-              : 'Cadastre o primeiro usuário para começar a usar o sistema.'}
+              ? 'Entre com seu usuário e senha para registrar prestadores e consultar as entradas da escola.'
+              : 'Crie o administrador inicial para liberar o acesso à equipe.'}
           </p>
         </div>
 
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
-          {mode === 'sign-up' && (
+          {mode === 'bootstrap' && (
             <label className="block text-sm font-medium">
-              Nome
+              Nome completo
               <input
                 required
                 value={name}
@@ -107,15 +116,17 @@ function AuthScreen() {
             </label>
           )}
           <label className="block text-sm font-medium">
-            E-mail
+            Usuário
             <input
               required
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              minLength={3}
+              maxLength={32}
+              value={username}
+              onChange={(event) => setUsername(event.target.value.toLowerCase())}
               className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-              placeholder="equipe@escola.com"
+              placeholder="ex.: portaria"
             />
+            <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Use letras, números, ponto, hífen ou sublinhado.</span>
           </label>
           <label className="block text-sm font-medium">
             Senha
@@ -136,18 +147,18 @@ function AuthScreen() {
             disabled={pending}
             className="h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {pending ? 'Aguarde…' : mode === 'sign-in' ? 'Entrar' : 'Criar conta'}
+            {pending ? 'Aguarde…' : mode === 'sign-in' ? 'Entrar' : 'Criar administrador'}
           </button>
           <button
             type="button"
             onClick={() => {
-              setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in');
+              setMode(mode === 'sign-in' ? 'bootstrap' : 'sign-in');
               setError('');
               setMessage('');
             }}
             className="w-full text-sm font-medium text-primary hover:underline"
           >
-            {mode === 'sign-in' ? 'Ainda não tenho acesso' : 'Já tenho uma conta'}
+            {mode === 'sign-in' ? 'Primeiro acesso: criar administrador' : 'Voltar para entrar'}
           </button>
         </form>
       </div>
@@ -175,19 +186,20 @@ function AccessGate() {
 
   if (!session) return <AuthScreen />;
 
-  return <Router />;
+  return <Router isAdmin={session.user.user_metadata?.role === 'admin'} />;
 }
 
-function Router() {
+function Router({ isAdmin }: { isAdmin: boolean }) {
   return (
     <RoutedErrorBoundary>
-      <AppShell>
+      <AppShell isAdmin={isAdmin}>
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/cadastro" component={Cadastro} />
           <Route path="/historico" component={Historico} />
           <Route path="/prestadores" component={Prestadores} />
           <Route path="/prestadores/:id" component={PrestadorDetalhe} />
+          <Route path="/admin" component={AdminUsuarios} />
           <Route component={NotFound} />
         </Switch>
       </AppShell>

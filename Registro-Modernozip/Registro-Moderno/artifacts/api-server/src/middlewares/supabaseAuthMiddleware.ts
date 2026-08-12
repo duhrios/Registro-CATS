@@ -1,14 +1,31 @@
 import type { NextFunction, Request, Response } from "express";
 import { supabase } from "../lib/supabase";
 
-export type AuthenticatedRequest = Request & { staffId?: string };
+export type StaffProfile = {
+  user_id: string;
+  username: string;
+  full_name: string;
+  role: "admin";
+  created_at: string;
+};
+
+export type AuthenticatedRequest = Request & {
+  staffId?: string;
+  staffRole?: "admin";
+  staffProfile?: StaffProfile;
+};
 
 export async function supabaseAuthMiddleware(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ) {
-  if (req.path === "/api/config" || req.path === "/api/healthz") {
+  if (
+    req.path === "/api/config" ||
+    req.path === "/api/healthz" ||
+    req.path === "/api/auth/login" ||
+    req.path === "/api/auth/bootstrap"
+  ) {
     next();
     return;
   }
@@ -32,5 +49,18 @@ export async function supabaseAuthMiddleware(
   }
 
   req.staffId = data.user.id;
+  const { data: profile, error: profileError } = await supabase
+    .from("staff_profiles")
+    .select("user_id, username, full_name, role, created_at")
+    .eq("user_id", data.user.id)
+    .maybeSingle<StaffProfile>();
+
+  if (profileError) {
+    res.status(500).json({ error: "O perfil de acesso ainda não está configurado. Aplique o schema do Supabase." });
+    return;
+  }
+
+  req.staffProfile = profile ?? undefined;
+  req.staffRole = profile?.role;
   next();
 }
