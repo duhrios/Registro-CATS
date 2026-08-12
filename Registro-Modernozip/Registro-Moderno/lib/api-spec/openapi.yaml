@@ -1,0 +1,362 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: providers
+    description: Service providers and visits
+  - name: dashboard
+    description: Dashboard summaries
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /providers:
+    get:
+      operationId: listProviders
+      tags: [providers]
+      summary: List providers
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Provider list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Provider"
+    post:
+      operationId: createProvider
+      tags: [providers]
+      summary: Create a provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderInput"
+      responses:
+        "201":
+          description: Created provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Provider"
+        "409":
+          description: RG already registered
+  /providers/{id}:
+    get:
+      operationId: getProvider
+      tags: [providers]
+      summary: Get a provider
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Provider"
+        "404":
+          description: Provider not found
+    patch:
+      operationId: updateProvider
+      tags: [providers]
+      summary: Update a provider
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderUpdate"
+      responses:
+        "200":
+          description: Updated provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Provider"
+        "404":
+          description: Provider not found
+  /visits:
+    get:
+      operationId: listVisits
+      tags: [providers]
+      summary: List visit entries
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        "200":
+          description: Visit list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Visit"
+    post:
+      operationId: createVisit
+      tags: [providers]
+      summary: Register a visit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisitInput"
+      responses:
+        "201":
+          description: Registered visit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visit"
+        "404":
+          description: Provider not found
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [providers]
+      summary: Request a private photo upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestUploadInput"
+      responses:
+        "200":
+          description: Signed upload details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "401":
+          description: Unauthorized
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: number
+        minimum: 1
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Provider:
+      type: object
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        rg:
+          type: string
+        company:
+          type: string
+        defaultService:
+          type: string
+        photoData:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        lastVisitAt:
+          type: ["string", "null"]
+        visitCount:
+          type: number
+      required:
+        - id
+        - name
+        - rg
+        - company
+        - defaultService
+        - photoData
+        - createdAt
+        - lastVisitAt
+        - visitCount
+    ProviderInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        rg:
+          type: string
+          minLength: 3
+        company:
+          type: string
+          minLength: 2
+        defaultService:
+          type: string
+          minLength: 2
+        photoData:
+          type: ["string", "null"]
+      required:
+        - name
+        - rg
+        - company
+        - defaultService
+    ProviderUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        rg:
+          type: string
+          minLength: 3
+        company:
+          type: string
+          minLength: 2
+        defaultService:
+          type: string
+          minLength: 2
+        photoData:
+          type: ["string", "null"]
+    Visit:
+      type: object
+      properties:
+        id:
+          type: number
+        providerId:
+          type: number
+        providerName:
+          type: string
+        company:
+          type: string
+        service:
+          type: string
+        photoData:
+          type: ["string", "null"]
+        enteredAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - providerId
+        - providerName
+        - company
+        - service
+        - photoData
+        - enteredAt
+    VisitInput:
+      type: object
+      properties:
+        providerId:
+          type: number
+          minimum: 1
+        service:
+          type: string
+          minLength: 2
+      required:
+        - providerId
+        - service
+    DashboardSummary:
+      type: object
+      properties:
+        totalProviders:
+          type: number
+        visitsToday:
+          type: number
+        currentlyExpected:
+          type: number
+        recentVisits:
+          type: array
+          items:
+            $ref: "#/components/schemas/Visit"
+      required:
+        - totalProviders
+        - visitsToday
+        - currentlyExpected
+        - recentVisits
+    RequestUploadInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: number
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+      required:
+        - name
+        - size
+        - contentType
+    UploadUrlResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/RequestUploadInput"
+      required:
+        - uploadURL
+        - objectPath
+        - metadata
+

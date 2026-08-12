@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Controle de Prestadores"
+description = "Sistema moderno para escolas cadastrarem prestadores de serviço com foto pela webcam, localizarem rapidamente seus dados e registrarem cada entrada automaticamente com data e hora."
+version = "1.0.0"
+id = "artifacts/controle-prestadores"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22550
+
+[services.development]
+run = "pnpm --filter @workspace/controle-prestadores run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/controle-prestadores", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/controle-prestadores/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22550"
+BASE_PATH = "/"
