@@ -41,7 +41,7 @@ export function createBrowserSupabaseClient(url: string, anonKey: string) {
                 app_metadata: {},
                 created_at: new Date().toISOString(),
               };
-          session = { ...nextSession, user } as Session;
+          session = { ...nextSession, user } as unknown as Session;
           window.localStorage.setItem('portico-mock-session', JSON.stringify(session));
           listeners.forEach((listener) => listener(session));
           return { data: { session }, error: null };

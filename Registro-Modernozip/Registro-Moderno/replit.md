@@ -5,7 +5,8 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 ## Run & Operate
 
 - Frontend: `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run dev`
-- API: `PORT=8080 pnpm --filter @workspace/api-server run dev`
+- API real: `PORT=8080 pnpm --filter @workspace/api-server run dev`
+- API local de demonstração: `PORT=8080 MOCK_SUPABASE=true pnpm --filter @workspace/api-server run dev`
 - `pnpm run typecheck` — full typecheck across all packages
 - `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run build` — production frontend build
 - `pnpm --filter @workspace/api-server run build` — production API bundle
@@ -13,6 +14,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - Database: execute `supabase/schema.sql` once in the Supabase SQL Editor; this creates the staff profile table and access roles
 - Required secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - Authentication: the application login uses a username and password; the API maps the username to an internal Supabase Auth account and validates bearer tokens
+- Local demo mode: set `MOCK_SUPABASE=true` only for the Replit preview; it uses in-memory fictional users and provider/visit records, with `admin` / `admin123` as the demo login. Disable it and configure Supabase before using real data.
 
 ## Stack
 

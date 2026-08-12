@@ -1,0 +1,64 @@
+Vou revisar o fluxo atual de autenticação, o schema e as telas/rotas principais para implementar a mudança de forma consistente. Vou manter a alteração do Supabase concentrada em uma única atualização do schema.sql, sem tentar alterar o projeto Supabase agora.
+
+
+
+26 actions
+Encontrei o ponto central: o Supabase Auth hoje aceita e-mail e o cadastro público está aberto. Vou trocar por um fluxo seguro de usuário/senha no backend, criar uma tabela de perfis com papel de administrador, deixar o primeiro cadastro como administrador inicial e restringir a criação de novos integrantes à página administrativa.
+
+
+
+13 actions
+A interface e o backend já foram alterados. Agora vou validar tipos e build; como o projeto importado ainda não tem node_modules, primeiro preciso instalar as dependências locais do monorepo.
+
+
+
+15 actions
+A validação de tipos e os dois builds passaram. O frontend iniciou corretamente; o backend não consegue iniciar porque este ambiente ainda não tem as credenciais do Supabase (SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY), então a tela funcional de login não pode ser exercitada aqui sem configurar esses secrets. Vou fazer uma última checagem visual do preview e revisar o diff.
+
+
+
+2 actions
+Implementei a alteração completa no projeto:
+
+Alterações realizadas
+Login alterado de e-mail e senha para usuário e senha.
+Criado fluxo de primeiro acesso para criar o administrador inicial.
+Criada tabela staff_profiles no supabase/schema.sql.
+Criada rota protegida para administradores criarem novos integrantes.
+Novos integrantes são criados automaticamente com perfil de administrador.
+Criada página /admin para gerenciamento de integrantes.
+Adicionado acesso “Gerenciar integrantes” no menu administrativo.
+O menu agora mostra o nome e usuário do integrante logado.
+O backend valida o perfil e impede usuários não administradores de criarem contas.
+As contas usam o Supabase Auth internamente, mas o e-mail fica oculto do usuário.
+Atualizado o replit.md com o novo fluxo de autenticação.
+Validações
+pnpm run typecheck passou.
+Build da API passou.
+Build do frontend passou.
+O frontend iniciou corretamente.
+Pendência para ativar
+O backend não iniciou porque os secrets do Supabase ainda não estão configurados neste ambiente:
+
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+
+Também é necessário executar uma única vez:
+
+supabase/schema.sql
+
+no SQL Editor do Supabase.
+
+Depois disso, na tela de login, use “Primeiro acesso: criar administrador” para criar o primeiro usuário administrador. Não deixei usuário ou senha fixos no código por segurança.
+
+
+
+Worked for 3 minutes
+
+Checkpoint made
+4 minutes ago
+faça ficticias somente para roda no app aqui depois migramos para lá
+
+1 minute ago
+Vou criar um modo local de demonstração, isolado por MOCK_SUPABASE=true, sem substituir o fluxo real do Supabase. Ele terá usuários fictícios em memória, login por usuário/senha e dados de prestadores/visitas para o app funcionar no preview; depois basta remover essa flag e configurar o Supabase real.

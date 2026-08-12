@@ -149,7 +149,11 @@ class MockQueryBuilder {
   }
 
   returns<T>() {
-    return this as unknown as MockQueryBuilder;
+    return this as unknown as PromiseLike<{
+      data: T;
+      count: number | null;
+      error: null;
+    }>;
   }
 
   async maybeSingle<T>() {
@@ -180,7 +184,7 @@ class MockQueryBuilder {
           ...(this.tableName === "provider_visits" ? { id: nextIds.provider_visits++, entered_at: now() } : {}),
         };
         const existingIndex = this.tableName === "staff_profiles"
-          ? rows.findIndex((candidate) => candidate.user_id === row.user_id)
+          ? rows.findIndex((candidate) => (candidate as { user_id?: unknown }).user_id === (row as { user_id?: unknown }).user_id)
           : -1;
         if (existingIndex >= 0) rows[existingIndex] = { ...rows[existingIndex], ...row };
         else rows.push(row);
@@ -226,7 +230,7 @@ export function createMockSupabase() {
     },
     auth: {
       async getUser(token: string) {
-        const user = sessions.get(token);
+        const user = sessions.get(token) ?? users.find((candidate) => token === `mock-token-${candidate.id}`);
         return user
           ? { data: { user: clone(user) }, error: null }
           : { data: { user: null }, error: new Error("Sessão fictícia inválida") };

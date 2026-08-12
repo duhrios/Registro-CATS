@@ -263,7 +263,7 @@ function App() {
 
   return (
       <SupabaseProvider client={client}>
-        <AuthenticatedApp isMockMode={config?.mockMode === true || config.url === 'http://mock.local'} />
+        <AuthenticatedApp isMockMode={config?.mockMode === true || config?.url === 'http://mock.local'} />
     </SupabaseProvider>
   );
 }
