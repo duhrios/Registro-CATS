@@ -154,17 +154,6 @@ function AuthScreen({ isMockMode = false }: { isMockMode?: boolean }) {
           >
             {pending ? 'Aguarde…' : mode === 'sign-in' ? 'Entrar' : 'Criar administrador'}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode(mode === 'sign-in' ? 'bootstrap' : 'sign-in');
-              setError('');
-              setMessage('');
-            }}
-            className="w-full text-sm font-medium text-primary hover:underline"
-          >
-            {mode === 'sign-in' ? 'Primeiro acesso: criar administrador' : 'Voltar para entrar'}
-          </button>
         </form>
       </div>
     </div>
