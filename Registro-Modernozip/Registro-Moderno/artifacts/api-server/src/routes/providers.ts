@@ -255,6 +255,7 @@ router.post("/visits", async (req: AuthenticatedRequest, res) => {
     .insert({
       provider_id: provider.id,
       service: parsed.data.service.trim(),
+      entered_at: new Date().toISOString(),
       exit_at: parsed.data.exitAt ? parsed.data.exitAt.toISOString() : null,
     })
     .select("*")
