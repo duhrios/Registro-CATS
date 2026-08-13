@@ -4,6 +4,7 @@ import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useSupabase } from '@/lib/supabase-context';
 import { useGetDashboardSummary } from '@workspace/api-client-react';
+import { initials } from '@/lib/format';
 
 const navItems = [
   { href: '/', label: 'Visão geral', icon: LayoutDashboard },
@@ -59,7 +60,7 @@ export function AppShell({ children, isAdmin }: { children: React.ReactNode; isA
           <p className="text-[11px] leading-relaxed text-sidebar-foreground/55">Identidade registrada uma vez. Acesso simples em cada visita.</p>
         </div>
           <div className="mt-4 flex items-center gap-3 px-2">
-          <div className="grid h-8 w-8 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">MA</div>
+           <div className="grid h-8 w-8 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">{initials(identity.name)}</div>
             <div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">{identity.name}</div><div className="truncate text-[10px] text-sidebar-foreground/45">{identity.username}</div></div>
            <button type="button" onClick={() => supabase.auth.signOut()} aria-label="Sair" className="text-sidebar-foreground/50 transition-colors hover:text-sidebar-foreground"><LogOut className="h-4 w-4" /></button>
         </div>
