@@ -1,0 +1,52 @@
+aça um teste de funcionalidade crie um boot e veja todas as funcões teste de 1000 vezes e 1000 usuarios aleatorios nas categorias
+
+2 minutes ago
+
+2 actions
+Vou executar um bot de teste temporário contra a API em modo demonstração: ele criará 1.000 usuários com perfis aleatórios (Administrador/Comum), editará nome, senha e perfil, validará login e permissões, listará usuários quando aplicável e excluirá todos ao final para não deixar lixo nos dados fictícios. Também vou repetir as validações de proteção do administrador.
+
+
+
+2 actions
+O bot encontrou uma falha durante a carga concorrente, não no build: um login de usuário temporário retornou 401 após 22 criações. Como o teste foi interrompido antes da limpeza, vou reiniciar o servidor de demonstração para restaurar os dados fictícios, reduzir a concorrência e repetir as 1.000 operações com limpeza garantida. Também vou verificar os logs para confirmar se a causa foi colisão do mock sob concorrência.
+
+
+
+4 actions
+Os logs confirmam que a falha ocorre sob concorrência e coincide com a geração de IDs baseada em users.length; quando usuários são criados e excluídos ao mesmo tempo, o mock pode reutilizar um ID e invalidar o login de outro usuário. Vou corrigir esse ponto no mock (contador monotônico e invalidação de sessões excluídas) e repetir o bot com 20 operações simultâneas, mantendo 1.000 usuários e limpeza automática.
+
+
+
+5 actions
+O teste de carga passou: 1.000 usuários foram criados com perfis aleatórios, editados, autenticados, validados por permissão e excluídos com sucesso. Também corrigi a colisão de IDs do mock descoberta pela concorrência e vou apenas confirmar os logs finais e o estado do diff.
+
+
+
+3 actions
+Teste de funcionalidade concluído com sucesso usando um bot temporário.
+
+Resultado do teste
+1.000 usuários aleatórios criados
+Perfis iniciais:
+468 Administradores
+532 Comuns
+1.000 edições realizadas
+Alteração de nome
+Alteração de senha
+Alteração de perfil
+1.000 logins validados
+1.000 testes de permissão
+Administradores conseguiram acessar a gestão de usuários
+Usuários comuns receberam bloqueio 403
+1.000 usuários excluídos
+Nenhum usuário de teste permaneceu cadastrado
+Proteção contra o administrador rebaixar a própria conta validada com status 400
+Teste executado com 20 operações simultâneas
+Durante o primeiro teste concorrente foi encontrada uma colisão de IDs no mock de demonstração. Corrigi o problema usando IDs monotônicos e invalidando sessões quando o usuário é excluído.
+
+Também confirmei:
+
+pnpm run typecheck passou
+Build da API passou
+Workflows Controle de Prestadores e API Server continuam ativos
+Dados fictícios foram restaurados, permanecendo somente o administrador padrão.
