@@ -1,0 +1,60 @@
+Coloque no campo do administrador
+
+editar senha do usuário, inclusive a própria, dos outros usuários e excluir usuário e também ver uma lista de usuários
+
+coloque também a opção do admin excluir prestadores, um por um, selecionar ou apagar todos.
+
+5 minutes ago
+Vou localizar as telas, rotas e contratos atuais de administração e prestadores para implementar isso mantendo a estrutura existente. Também vou confirmar como o modo de demonstração persiste esses dados, para que as ações funcionem no preview.
+
+
+
+5 actions
+Encontrei a base: a área /admin já existe, mas preciso ampliar o contrato da API e a tela para incluir listagem, troca de senha, exclusão de usuários e exclusão em massa de prestadores. Vou agora ler apenas os arquivos centrais dessas duas áreas e os schemas gerados para fazer a alteração de ponta a ponta.
+
+
+
+17 actions
+Vou implementar agora em três pontos: endpoints protegidos no backend, suporte equivalente no modo demonstração e controles nas telas de administração/diretório. A exclusão de prestador também removerá as visitas relacionadas (como já define o banco), e o próprio administrador não poderá apagar a própria conta por engano.
+
+
+
+7 actions
+As telas e endpoints já foram atualizados. Agora vou instalar as dependências do monorepo, rodar o typecheck/build e corrigir qualquer incompatibilidade de TypeScript antes de reiniciar os dois serviços e testar no preview.
+
+
+
+10 actions
+Os checks passaram: typecheck, build do frontend e build da API estão verdes. Vou reiniciar os workflows para carregar o código novo, verificar os logs e abrir o preview para confirmar visualmente a área administrativa e o diretório.
+
+
+
+6 actions
+Os serviços estão rodando sem erros. Vou fazer um teste funcional rápido diretamente na API em modo demonstração: listar usuários, criar um usuário temporário, trocar a senha dele, excluí-lo e validar a exclusão de um prestador; depois reinicio a API para restaurar os dados fictícios iniciais.
+
+
+
+3 actions
+O teste funcional passou para todas as operações novas. Como o teste removeu um registro fictício apenas para validar a rota, vou reiniciar o servidor de demonstração para restaurar os dados iniciais e então finalizar com a validação de acompanhamento exigida pelo projeto.
+
+
+
+3 actions
+A funcionalidade está concluída e os dados de demonstração foram restaurados. Vou apenas confirmar o estado final dos workflows e do diff; em seguida registrarei uma sugestão opcional de teste automatizado para proteger essas ações destrutivas e encerrarei a tarefa.
+
+
+
+2 actions
+A validação final está limpa e os dois workflows seguem ativos. Vou registrar uma única melhoria opcional de alto impacto — testes automatizados para impedir regressões nas exclusões e trocas de senha — e marcar a tarefa como concluída.
+
+
+
+2 actions
+O registro automático não foi executado porque o texto do próximo passo continha uma formatação inválida no script, sem alterar o projeto. Vou reenviar a mesma sugestão com a descrição simplificada e concluir a tarefa em seguida.
+
+
+
+Show less
+
+Tarefa concluída com próximos passos registrados
+A sugestão de acompanhamento foi registrada com sucesso como tarefa opcional. A chamada anterior falhou apenas ao tentar imprimir o retorno dessa sugestão; vou executar agora a chamada final de conclusão isoladamente, como solicitado pelo ambiente.
