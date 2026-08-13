@@ -8,6 +8,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - API real: `PORT=8080 pnpm --filter @workspace/api-server run dev`
 - API local de demonstração: `PORT=8080 MOCK_SUPABASE=true pnpm --filter @workspace/api-server run dev`
 - `pnpm run typecheck` — full typecheck across all packages
+- `pnpm run test:mock-load` — reproducible 1,000-user demo API smoke/load test with cleanup
 - `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run build` — production frontend build
 - `pnpm --filter @workspace/api-server run build` — production API bundle
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
