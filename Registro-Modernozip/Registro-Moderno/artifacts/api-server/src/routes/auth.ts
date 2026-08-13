@@ -29,6 +29,10 @@ function passwordIsValid(password: unknown) {
   return typeof password === "string" && password.length >= 6;
 }
 
+function roleIsValid(role: unknown): role is StaffProfile["role"] {
+  return role === "admin" || role === "user";
+}
+
 function credentialsFromBody(body: Request["body"]) {
   const username = normalizeUsername(body?.username);
   const fullName = typeof body?.fullName === "string" ? body.fullName.trim() : "";
@@ -201,9 +205,14 @@ router.post("/auth/users", async (req: AuthenticatedRequest, res: Response) => {
   }
 
   const { username, fullName, password } = credentialsFromBody(req.body);
+  const role = req.body?.role === undefined ? "user" : req.body.role;
   const validationError = validateCredentials(username, fullName, password);
   if (validationError) {
     res.status(400).json({ error: validationError });
+    return;
+  }
+  if (!roleIsValid(role)) {
+    res.status(400).json({ error: "Escolha um perfil válido: administrador ou comum." });
     return;
   }
 
@@ -214,11 +223,11 @@ router.post("/auth/users", async (req: AuthenticatedRequest, res: Response) => {
       return;
     }
 
-    const { user, profile } = await createAuthUser(username, fullName, password, "user");
+    const { user, profile } = await createAuthUser(username, fullName, password, role);
     res.status(201).json({
       user: { id: user.id },
       profile,
-      message: "Usuário criado para a recepção.",
+      message: role === "admin" ? "Administrador criado com sucesso." : "Usuário comum criado para a recepção.",
     });
   } catch (error) {
     req.log?.error(error);
@@ -226,6 +235,86 @@ router.post("/auth/users", async (req: AuthenticatedRequest, res: Response) => {
       ? "Este usuário já está em uso."
       : "Não foi possível criar o integrante.";
     res.status(500).json({ error: message });
+  }
+});
+
+router.patch("/auth/users/:userId", async (req: AuthenticatedRequest, res: Response) => {
+  if (req.staffRole !== "admin") {
+    res.status(403).json({ error: "Apenas administradores podem editar usuários." });
+    return;
+  }
+
+  const userId = typeof req.params.userId === "string" ? req.params.userId : "";
+  if (!userId) {
+    res.status(400).json({ error: "Usuário inválido." });
+    return;
+  }
+
+  const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : "";
+  const password = req.body?.password;
+  const role = req.body?.role;
+  if (fullName.length < 2) {
+    res.status(400).json({ error: "Informe um nome com pelo menos 2 caracteres." });
+    return;
+  }
+  if (password !== undefined && password !== "" && !passwordIsValid(password)) {
+    res.status(400).json({ error: "A nova senha precisa ter pelo menos 6 caracteres." });
+    return;
+  }
+  if (!roleIsValid(role)) {
+    res.status(400).json({ error: "Escolha um perfil válido: administrador ou comum." });
+    return;
+  }
+  if (userId === req.staffId && role !== "admin") {
+    res.status(400).json({ error: "Você não pode remover o perfil administrador da própria conta." });
+    return;
+  }
+
+  try {
+    const { data: target, error: profileError } = await supabase
+      .from("staff_profiles")
+      .select("user_id, username, full_name, role, created_at")
+      .eq("user_id", userId)
+      .maybeSingle<StaffProfile>();
+    if (profileError) throw profileError;
+    if (!target) {
+      res.status(404).json({ error: "Usuário não encontrado." });
+      return;
+    }
+
+    if (target.role === "admin" && role === "user") {
+      const { count, error: countError } = await supabase
+        .from("staff_profiles")
+        .select("user_id", { count: "exact", head: true })
+        .eq("role", "admin");
+      if (countError) throw countError;
+      if ((count ?? 0) <= 1) {
+        res.status(400).json({ error: "Mantenha pelo menos um administrador ativo." });
+        return;
+      }
+    }
+
+    const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
+      ...(password ? { password } : {}),
+      user_metadata: {
+        username: target.username,
+        full_name: fullName,
+        role,
+      },
+    });
+    if (authError) throw authError;
+
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from("staff_profiles")
+      .update({ full_name: fullName, role })
+      .eq("user_id", userId)
+      .select("user_id, username, full_name, role, created_at")
+      .single<StaffProfile>();
+    if (updateError) throw updateError;
+    res.json({ profile: updatedProfile, message: "Usuário atualizado com sucesso." });
+  } catch (error) {
+    req.log?.error(error);
+    res.status(500).json({ error: "Não foi possível atualizar o usuário." });
   }
 });
 

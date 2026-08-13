@@ -279,10 +279,14 @@ export function createMockSupabase() {
           tables.staff_profiles = tables.staff_profiles.filter((profile) => profile.user_id !== userId);
           return { data: { user: null }, error: null };
         },
-        async updateUserById(userId: string, attributes: { password?: string }) {
+        async updateUserById(userId: string, attributes: {
+          password?: string;
+          user_metadata?: MockUser["user_metadata"];
+        }) {
           const user = users.find((candidate) => candidate.id === userId);
           if (!user) return { data: { user: null }, error: new Error("User not found") };
           if (attributes.password) user.password = attributes.password;
+          if (attributes.user_metadata) user.user_metadata = { ...user.user_metadata, ...attributes.user_metadata };
           return { data: { user: clone(user) }, error: null };
         },
       },
