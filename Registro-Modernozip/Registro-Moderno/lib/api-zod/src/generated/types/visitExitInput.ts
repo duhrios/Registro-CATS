@@ -6,11 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface VisitInput {
-  /** @minimum 1 */
-  providerId: number;
-  /** @minLength 2 */
-  service: string;
+export interface VisitExitInput {
   /** @nullable */
-  exitAt?: Date | null;
+  exitAt: Date | null;
 }

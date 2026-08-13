@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { CheckCircle2, KeyRound, Loader2, ShieldCheck, UserPlus, UsersRound } from 'lucide-react';
+import { CheckCircle2, KeyRound, Link2, Loader2, Save, ShieldCheck, UserPlus, UsersRound } from 'lucide-react';
 import { useSupabase } from '@/lib/supabase-context';
 
 type Profile = {
@@ -18,12 +18,20 @@ export default function AdminUsuarios() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
+  const [driveFolderUrl, setDriveFolderUrl] = useState('');
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [drivePending, setDrivePending] = useState(false);
+  const [driveMessage, setDriveMessage] = useState('');
+  const [driveError, setDriveError] = useState('');
 
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(({ data }) => {
       const token = data.session?.access_token;
-      if (!token) return;
+       if (!token) {
+         if (active) setLoading(false);
+         return;
+       }
       fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
         .then(async (response) => {
           const payload = await response.json();
@@ -37,6 +45,25 @@ export default function AdminUsuarios() {
       active = false;
     };
   }, [supabase]);
+
+  useEffect(() => {
+    if (!profile || profile.role !== 'admin') return;
+    let active = true;
+    setDriveLoading(true);
+    supabase.auth.getSession().then(({ data }) => fetch('/api/settings/drive', {
+      headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+    }))
+      .then(async (response) => {
+        const payload = await response.json() as { driveFolderUrl?: string | null; error?: string };
+        if (!response.ok) throw new Error(payload.error ?? 'Não foi possível carregar o link do Drive.');
+        if (active) setDriveFolderUrl(payload.driveFolderUrl ?? '');
+      })
+      .catch((requestError: Error) => active && setDriveError(requestError.message))
+      .finally(() => active && setDriveLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [profile, supabase]);
 
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,6 +93,35 @@ export default function AdminUsuarios() {
       setError('Não foi possível conectar ao servidor. Tente novamente.');
     } finally {
       setPending(false);
+    }
+  }
+
+  async function saveDriveFolder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setDriveError('');
+    setDriveMessage('');
+    setDrivePending(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch('/api/settings/drive', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${data.session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ driveFolderUrl: driveFolderUrl.trim() || null }),
+      });
+      const payload = await response.json() as { driveFolderUrl?: string | null; error?: string };
+      if (!response.ok) {
+        setDriveError(payload.error ?? 'Não foi possível salvar o link do Drive.');
+        return;
+      }
+      setDriveFolderUrl(payload.driveFolderUrl ?? '');
+      setDriveMessage('Link da pasta de fotos salvo.');
+    } catch {
+      setDriveError('Não foi possível conectar ao servidor. Tente novamente.');
+    } finally {
+      setDrivePending(false);
     }
   }
 
@@ -131,6 +187,20 @@ export default function AdminUsuarios() {
            <p className="text-sm leading-relaxed text-sidebar-foreground/65">Somente o administrador acessa este espaço e cria usuários. Os usuários da recepção podem registrar prestadores, consultar visitas e acompanhar o movimento da escola.</p>
            <div className="mt-6 rounded-xl border border-sidebar-foreground/10 bg-sidebar-accent/60 p-4 text-xs leading-relaxed text-sidebar-foreground/60">Compartilhe a senha inicial somente com o usuário responsável. O administrador continua sendo o único responsável por novos acessos.</div>
         </aside>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <div className="flex items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Link2 className="h-5 w-5" /></div>
+          <div><h2 className="text-lg font-bold tracking-tight">Pasta de fotos online</h2><p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Cole o link da pasta do Google Drive onde as fotos dos prestadores serão organizadas. A integração usará o nome do prestador no arquivo, por exemplo: Carlos Eduardo Souza.jpg.</p></div>
+        </div>
+        <form onSubmit={saveDriveFolder} className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <input type="url" value={driveFolderUrl} onChange={(event) => setDriveFolderUrl(event.target.value)} disabled={driveLoading} placeholder="https://drive.google.com/drive/folders/..." className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-60" />
+          <button type="submit" disabled={driveLoading || drivePending} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{drivePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar link</button>
+        </form>
+        {driveError && <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{driveError}</p>}
+        {driveMessage && <p className="mt-3 flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{driveMessage}</p>}
+        <p className="mt-3 text-[11px] text-muted-foreground">O link fica disponível para a equipe depois que a integração do Google Drive for conectada ao projeto. Apenas o administrador pode alterá-lo.</p>
       </section>
     </div>
   );

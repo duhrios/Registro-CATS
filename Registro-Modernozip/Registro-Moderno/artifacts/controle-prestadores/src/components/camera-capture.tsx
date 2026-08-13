@@ -8,6 +8,11 @@ export function CameraCapture({ value, onChange }: { value: string | null; onCha
   const [cameraState, setCameraState] = useState<'idle' | 'active' | 'denied'>('idle');
   const [error, setError] = useState('');
   useEffect(() => () => streamRef.current?.getTracks().forEach((track) => track.stop()), []);
+  useEffect(() => {
+    if (cameraState !== 'active' || !videoRef.current || !streamRef.current) return;
+    videoRef.current.srcObject = streamRef.current;
+    videoRef.current.play().catch(() => setError('A câmera foi autorizada, mas não iniciou a reprodução. Tente abrir novamente.'));
+  }, [cameraState]);
   async function openCamera() {
     setError('');
     try {
@@ -15,13 +20,13 @@ export function CameraCapture({ value, onChange }: { value: string | null; onCha
       if (!stream) throw new Error('Câmera indisponível');
       streamRef.current = stream;
       setCameraState('active');
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
-    } catch { setCameraState('denied'); setError('Não foi possível abrir a câmera. Selecione uma imagem para continuar.'); }
+    } catch { setCameraState('denied'); setError('Não foi possível abrir a câmera. Verifique a permissão do navegador ou selecione uma imagem.'); }
   }
   function capture() {
     const video = videoRef.current;
     if (!video) return;
-    const canvas = document.createElement('canvas'); canvas.width = 720; canvas.height = 540;
+     if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+     const canvas = document.createElement('canvas'); canvas.width = video.videoWidth || 720; canvas.height = video.videoHeight || 540;
     canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
     onChange(canvas.toDataURL('image/jpeg', .82));
     streamRef.current?.getTracks().forEach((track) => track.stop()); streamRef.current = null; setCameraState('idle');

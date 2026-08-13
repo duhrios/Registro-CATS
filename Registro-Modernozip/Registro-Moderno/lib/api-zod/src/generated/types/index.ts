@@ -16,4 +16,5 @@ export * from './providerUpdate';
 export * from './requestUploadInput';
 export * from './uploadUrlResponse';
 export * from './visit';
+export * from './visitExitInput';
 export * from './visitInput';

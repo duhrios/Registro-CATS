@@ -30,6 +30,7 @@ import type {
   RequestUploadInput,
   UploadUrlResponse,
   Visit,
+  VisitExitInput,
   VisitInput
 } from './api.schemas';
 
@@ -595,6 +596,78 @@ export const useCreateVisit = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreateVisitMutationOptions(options));
+    }
+
+export const getUpdateVisitUrl = (id: number,) => {
+
+
+
+
+  return `/api/visits/${id}`
+}
+
+/**
+ * @summary Register or clear a visit exit
+ */
+export const updateVisit = async (id: number,
+    visitExitInput: VisitExitInput, options?: Parameters<typeof customFetch>[1]): Promise<Visit> => {
+
+  return customFetch<Visit>(getUpdateVisitUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(visitExitInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateVisitMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateVisit>>, TError,{id: number;data: BodyType<VisitExitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateVisit>>, TError,{id: number;data: BodyType<VisitExitInput>}, TContext> => {
+
+const mutationKey = ['updateVisit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateVisit>>, {id: number;data: BodyType<VisitExitInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateVisit(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateVisitMutationResult = NonNullable<Awaited<ReturnType<typeof updateVisit>>>
+    export type UpdateVisitMutationBody = BodyType<VisitExitInput>
+    export type UpdateVisitMutationError = ErrorType<void>
+
+    /**
+ * @summary Register or clear a visit exit
+ */
+export const useUpdateVisit = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateVisit>>, TError,{id: number;data: BodyType<VisitExitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateVisit>>,
+        TError,
+        {id: number;data: BodyType<VisitExitInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateVisitMutationOptions(options));
     }
 
 export const getGetDashboardSummaryUrl = () => {

@@ -161,7 +161,8 @@ export const ListVisitsResponseItem = zod.object({
   "company": zod.string(),
   "service": zod.string(),
   "photoData": zod.string().nullable(),
-  "enteredAt": zod.coerce.date()
+  "enteredAt": zod.coerce.date(),
+  "exitAt": zod.coerce.date().nullable()
 })
 export const ListVisitsResponse = zod.array(ListVisitsResponseItem)
 
@@ -176,7 +177,8 @@ export const createVisitBodyServiceMin = 2;
 
 export const CreateVisitBody = zod.object({
   "providerId": zod.number().min(1),
-  "service": zod.string().min(createVisitBodyServiceMin)
+  "service": zod.string().min(createVisitBodyServiceMin),
+  "exitAt": zod.coerce.date().nullish()
 })
 
 export const CreateVisitResponse = zod.object({
@@ -186,7 +188,34 @@ export const CreateVisitResponse = zod.object({
   "company": zod.string(),
   "service": zod.string(),
   "photoData": zod.string().nullable(),
-  "enteredAt": zod.coerce.date()
+  "enteredAt": zod.coerce.date(),
+  "exitAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Register or clear a visit exit
+ */
+
+
+
+export const UpdateVisitParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const UpdateVisitBody = zod.object({
+  "exitAt": zod.coerce.date().nullable()
+})
+
+export const UpdateVisitResponse = zod.object({
+  "id": zod.number(),
+  "providerId": zod.number(),
+  "providerName": zod.string(),
+  "company": zod.string(),
+  "service": zod.string(),
+  "photoData": zod.string().nullable(),
+  "enteredAt": zod.coerce.date(),
+  "exitAt": zod.coerce.date().nullable()
 })
 
 
@@ -204,7 +233,8 @@ export const GetDashboardSummaryResponse = zod.object({
   "company": zod.string(),
   "service": zod.string(),
   "photoData": zod.string().nullable(),
-  "enteredAt": zod.coerce.date()
+  "enteredAt": zod.coerce.date(),
+  "exitAt": zod.coerce.date().nullable()
 }))
 })
 

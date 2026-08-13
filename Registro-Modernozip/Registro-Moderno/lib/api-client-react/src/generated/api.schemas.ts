@@ -58,6 +58,8 @@ export interface Visit {
   /** @nullable */
   photoData: string | null;
   enteredAt: string;
+  /** @nullable */
+  exitAt: string | null;
 }
 
 export interface VisitInput {
@@ -65,6 +67,13 @@ export interface VisitInput {
   providerId: number;
   /** @minLength 2 */
   service: string;
+  /** @nullable */
+  exitAt?: string | null;
+}
+
+export interface VisitExitInput {
+  /** @nullable */
+  exitAt: string | null;
 }
 
 export interface DashboardSummary {

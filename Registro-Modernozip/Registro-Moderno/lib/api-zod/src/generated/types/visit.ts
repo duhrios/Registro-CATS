@@ -15,4 +15,6 @@ export interface Visit {
   /** @nullable */
   photoData: string | null;
   enteredAt: Date;
+  /** @nullable */
+  exitAt: Date | null;
 }

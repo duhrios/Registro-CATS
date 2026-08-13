@@ -34,6 +34,7 @@ type VisitRow = {
   provider_id: number;
   service: string;
   entered_at: string;
+  exit_at: string | null;
 };
 
 const router: IRouter = Router();
@@ -98,6 +99,7 @@ function visitResponse(visit: VisitRow, provider: ProviderRow) {
     service: visit.service,
     photoData: provider.photo_data,
     enteredAt: visit.entered_at,
+    exitAt: visit.exit_at,
   };
 }
 
@@ -250,7 +252,11 @@ router.post("/visits", async (req: AuthenticatedRequest, res) => {
   }
   const { data: visit, error } = await supabase
     .from("provider_visits")
-    .insert({ provider_id: provider.id, service: parsed.data.service.trim() })
+    .insert({
+      provider_id: provider.id,
+      service: parsed.data.service.trim(),
+      exit_at: parsed.data.exitAt ? parsed.data.exitAt.toISOString() : null,
+    })
     .select("*")
     .single<VisitRow>();
   if (error) throw error;
@@ -259,6 +265,43 @@ router.post("/visits", async (req: AuthenticatedRequest, res) => {
     .update({ last_visit_at: visit.entered_at })
     .eq("id", provider.id);
   res.status(201).json(CreateVisitResponse.parse(visitResponse(visit, provider)));
+});
+
+router.patch("/visits/:id", async (req: AuthenticatedRequest, res) => {
+  if (!getStaffId(req, res)) return;
+  const parsedId = Number(req.params.id);
+  if (!Number.isInteger(parsedId) || parsedId < 1) {
+    res.status(400).json({ error: "Identificador de visita inválido." });
+    return;
+  }
+  const exitAt = req.body?.exitAt === null
+    ? null
+    : typeof req.body?.exitAt === "string" && !Number.isNaN(Date.parse(req.body.exitAt))
+      ? new Date(req.body.exitAt).toISOString()
+      : undefined;
+  if (exitAt === undefined) {
+    res.status(400).json({ error: "Informe uma data de saída válida ou deixe o campo vazio." });
+    return;
+  }
+
+  const { data: visit, error } = await supabase
+    .from("provider_visits")
+    .update({ exit_at: exitAt })
+    .eq("id", parsedId)
+    .select("*")
+    .maybeSingle<VisitRow>();
+  if (error) throw error;
+  if (!visit) {
+    res.status(404).json({ error: "Visita não encontrada." });
+    return;
+  }
+  const provider = await providerMap([visit.provider_id]);
+  const providerRow = provider.get(visit.provider_id);
+  if (!providerRow) {
+    res.status(404).json({ error: "Prestador não encontrado." });
+    return;
+  }
+  res.json(CreateVisitResponse.parse(visitResponse(visit, providerRow)));
 });
 
 router.get("/dashboard/summary", async (req: AuthenticatedRequest, res) => {

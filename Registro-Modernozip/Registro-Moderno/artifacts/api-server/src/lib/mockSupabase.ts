@@ -64,6 +64,14 @@ const tables: Record<string, MockRow[]> = {
       provider_id: 1,
       service: "Manutenção elétrica",
       entered_at: now(),
+      exit_at: null,
+    },
+  ],
+  school_settings: [
+    {
+      id: true,
+      drive_folder_url: null,
+      updated_at: now(),
     },
   ],
 };

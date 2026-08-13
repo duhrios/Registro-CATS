@@ -154,6 +154,28 @@ paths:
                 $ref: "#/components/schemas/Visit"
         "404":
           description: Provider not found
+  /visits/{id}:
+    patch:
+      operationId: updateVisit
+      tags: [providers]
+      summary: Register or clear a visit exit
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisitExitInput"
+      responses:
+        "200":
+          description: Updated visit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visit"
+        "404":
+          description: Visit not found
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -292,6 +314,9 @@ components:
         enteredAt:
           type: string
           format: date-time
+        exitAt:
+          type: ["string", "null"]
+          format: date-time
       required:
         - id
         - providerId
@@ -300,6 +325,7 @@ components:
         - service
         - photoData
         - enteredAt
+        - exitAt
     VisitInput:
       type: object
       properties:
@@ -309,9 +335,20 @@ components:
         service:
           type: string
           minLength: 2
+        exitAt:
+          type: ["string", "null"]
+          format: date-time
       required:
         - providerId
         - service
+    VisitExitInput:
+      type: object
+      properties:
+        exitAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - exitAt
     DashboardSummary:
       type: object
       properties:
