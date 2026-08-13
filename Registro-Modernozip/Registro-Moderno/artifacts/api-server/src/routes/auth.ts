@@ -229,4 +229,94 @@ router.post("/auth/users", async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+router.get("/auth/users", async (req: AuthenticatedRequest, res: Response) => {
+  if (req.staffRole !== "admin") {
+    res.status(403).json({ error: "Apenas administradores podem listar os integrantes." });
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("staff_profiles")
+      .select("user_id, username, full_name, role, created_at")
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    res.json({ users: data ?? [] });
+  } catch (error) {
+    req.log?.error(error);
+    res.status(500).json({ error: "Não foi possível carregar a lista de usuários." });
+  }
+});
+
+router.patch("/auth/users/:userId/password", async (req: AuthenticatedRequest, res: Response) => {
+  if (req.staffRole !== "admin") {
+    res.status(403).json({ error: "Apenas administradores podem alterar senhas." });
+    return;
+  }
+
+  const userId = typeof req.params.userId === "string" ? req.params.userId : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!userId || !passwordIsValid(password)) {
+    res.status(400).json({ error: "A nova senha precisa ter pelo menos 6 caracteres." });
+    return;
+  }
+
+  try {
+    const { data: target, error: profileError } = await supabase
+      .from("staff_profiles")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle<{ user_id: string }>();
+    if (profileError) throw profileError;
+    if (!target) {
+      res.status(404).json({ error: "Usuário não encontrado." });
+      return;
+    }
+
+    const { error } = await supabase.auth.admin.updateUserById(userId, { password });
+    if (error) throw error;
+    res.json({ message: "Senha atualizada com sucesso." });
+  } catch (error) {
+    req.log?.error(error);
+    res.status(500).json({ error: "Não foi possível atualizar a senha." });
+  }
+});
+
+router.delete("/auth/users/:userId", async (req: AuthenticatedRequest, res: Response) => {
+  if (req.staffRole !== "admin") {
+    res.status(403).json({ error: "Apenas administradores podem excluir usuários." });
+    return;
+  }
+
+  const userId = typeof req.params.userId === "string" ? req.params.userId : "";
+  if (!userId) {
+    res.status(400).json({ error: "Usuário inválido." });
+    return;
+  }
+  if (userId === req.staffId) {
+    res.status(400).json({ error: "O administrador não pode excluir a própria conta." });
+    return;
+  }
+
+  try {
+    const { data: target, error: profileError } = await supabase
+      .from("staff_profiles")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle<{ user_id: string }>();
+    if (profileError) throw profileError;
+    if (!target) {
+      res.status(404).json({ error: "Usuário não encontrado." });
+      return;
+    }
+
+    const { error } = await supabase.auth.admin.deleteUser(userId);
+    if (error) throw error;
+    res.json({ message: "Usuário excluído com sucesso." });
+  } catch (error) {
+    req.log?.error(error);
+    res.status(500).json({ error: "Não foi possível excluir o usuário." });
+  }
+});
+
 export default router;

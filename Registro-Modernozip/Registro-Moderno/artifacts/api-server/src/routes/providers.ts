@@ -209,6 +209,37 @@ router.patch("/providers/:id", async (req: AuthenticatedRequest, res) => {
   res.json(UpdateProviderResponse.parse(providerResponse(provider, await countVisits(provider.id))));
 });
 
+router.delete("/providers/:id", async (req: AuthenticatedRequest, res) => {
+  if (!getStaffId(req, res)) return;
+  if (req.staffRole !== "admin") {
+    res.status(403).json({ error: "Apenas administradores podem excluir prestadores." });
+    return;
+  }
+  const parsed = GetProviderParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Identificador de prestador inválido." });
+    return;
+  }
+
+  const { data: provider, error: providerError } = await supabase
+    .from("providers")
+    .select("id")
+    .eq("id", parsed.data.id)
+    .maybeSingle<{ id: number }>();
+  if (providerError) throw providerError;
+  if (!provider) {
+    res.status(404).json({ error: "Prestador não encontrado." });
+    return;
+  }
+
+  const { error } = await supabase
+    .from("providers")
+    .delete()
+    .eq("id", parsed.data.id);
+  if (error) throw error;
+  res.json({ message: "Prestador excluído com sucesso." });
+});
+
 router.get("/visits", async (req: AuthenticatedRequest, res) => {
   if (!getStaffId(req, res)) return;
   const parsed = ListVisitsQueryParams.safeParse(req.query);

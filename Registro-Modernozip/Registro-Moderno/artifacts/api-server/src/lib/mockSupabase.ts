@@ -88,7 +88,7 @@ function matches(row: MockRow, filters: Array<(candidate: MockRow) => boolean>) 
 }
 
 class MockQueryBuilder {
-  private operation: "select" | "insert" | "update" | "upsert" = "select";
+  private operation: "select" | "insert" | "update" | "delete" | "upsert" = "select";
   private values: MockRow | MockRow[] | null = null;
   private filters: Array<(row: MockRow) => boolean> = [];
   private orderBy: { column: string; ascending: boolean } | null = null;
@@ -113,6 +113,11 @@ class MockQueryBuilder {
   update(values: MockRow) {
     this.operation = "update";
     this.values = values;
+    return this;
+  }
+
+  delete() {
+    this.operation = "delete";
     return this;
   }
 
@@ -211,6 +216,11 @@ class MockQueryBuilder {
     }
     const count = filtered.length;
     if (this.maxRows !== null) filtered = filtered.slice(0, this.maxRows);
+    if (this.operation === "delete") {
+      const retained = rows.filter((row) => !matches(row, this.filters));
+      tables[this.tableName] = retained;
+      return { data: this.head ? null : clone(filtered), count, error: null as null };
+    }
     if (this.operation === "update") {
       filtered.forEach((row) => Object.assign(row, this.values ?? {}));
     }
@@ -268,6 +278,12 @@ export function createMockSupabase() {
           if (index >= 0) users.splice(index, 1);
           tables.staff_profiles = tables.staff_profiles.filter((profile) => profile.user_id !== userId);
           return { data: { user: null }, error: null };
+        },
+        async updateUserById(userId: string, attributes: { password?: string }) {
+          const user = users.find((candidate) => candidate.id === userId);
+          if (!user) return { data: { user: null }, error: new Error("User not found") };
+          if (attributes.password) user.password = attributes.password;
+          return { data: { user: clone(user) }, error: null };
         },
       },
     },

@@ -1,11 +1,13 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { CheckCircle2, KeyRound, Link2, Loader2, Save, ShieldCheck, UserPlus, UsersRound } from 'lucide-react';
+import { CheckCircle2, KeyRound, Link2, Loader2, Save, ShieldCheck, Trash2, UserPlus, UsersRound } from 'lucide-react';
 import { useSupabase } from '@/lib/supabase-context';
 
 type Profile = {
+  user_id: string;
   username: string;
   full_name: string;
   role: 'admin' | 'user';
+  created_at?: string;
 };
 
 export default function AdminUsuarios() {
@@ -23,6 +25,13 @@ export default function AdminUsuarios() {
   const [drivePending, setDrivePending] = useState(false);
   const [driveMessage, setDriveMessage] = useState('');
   const [driveError, setDriveError] = useState('');
+  const [users, setUsers] = useState<Profile[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [passwords, setPasswords] = useState<Record<string, string>>({});
+  const [passwordPending, setPasswordPending] = useState<string | null>(null);
+  const [deleteUserPending, setDeleteUserPending] = useState<string | null>(null);
+  const [usersMessage, setUsersMessage] = useState('');
+  const [usersError, setUsersError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -60,6 +69,25 @@ export default function AdminUsuarios() {
       })
       .catch((requestError: Error) => active && setDriveError(requestError.message))
       .finally(() => active && setDriveLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [profile, supabase]);
+
+  useEffect(() => {
+    if (!profile || profile.role !== 'admin') return;
+    let active = true;
+    setUsersLoading(true);
+    supabase.auth.getSession().then(({ data }) => fetch('/api/auth/users', {
+      headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+    }))
+      .then(async (response) => {
+        const payload = await response.json() as { users?: Profile[]; error?: string };
+        if (!response.ok) throw new Error(payload.error ?? 'Não foi possível carregar os usuários.');
+        if (active) setUsers(payload.users ?? []);
+      })
+      .catch((requestError: Error) => active && setUsersError(requestError.message))
+      .finally(() => active && setUsersLoading(false));
     return () => {
       active = false;
     };
@@ -125,6 +153,60 @@ export default function AdminUsuarios() {
     }
   }
 
+  async function updatePassword(user: Profile) {
+    const nextPassword = passwords[user.user_id] ?? '';
+    if (nextPassword.length < 6) {
+      setUsersError('A nova senha precisa ter pelo menos 6 caracteres.');
+      setUsersMessage('');
+      return;
+    }
+    setUsersError('');
+    setUsersMessage('');
+    setPasswordPending(user.user_id);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch(`/api/auth/users/${user.user_id}/password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${data.session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ password: nextPassword }),
+      });
+      const payload = await response.json() as { message?: string; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'Não foi possível atualizar a senha.');
+      setPasswords((current) => ({ ...current, [user.user_id]: '' }));
+      setUsersMessage(`Senha de ${user.full_name} atualizada.`);
+    } catch (requestError) {
+      setUsersError(requestError instanceof Error ? requestError.message : 'Não foi possível atualizar a senha.');
+    } finally {
+      setPasswordPending(null);
+    }
+  }
+
+  async function deleteUser(user: Profile) {
+    if (user.user_id === profile?.user_id) return;
+    if (!window.confirm(`Excluir o usuário ${user.full_name}? Essa ação não pode ser desfeita.`)) return;
+    setUsersError('');
+    setUsersMessage('');
+    setDeleteUserPending(user.user_id);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch(`/api/auth/users/${user.user_id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+      });
+      const payload = await response.json() as { message?: string; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'Não foi possível excluir o usuário.');
+      setUsers((current) => current.filter((candidate) => candidate.user_id !== user.user_id));
+      setUsersMessage(`Usuário ${user.full_name} excluído.`);
+    } catch (requestError) {
+      setUsersError(requestError instanceof Error ? requestError.message : 'Não foi possível excluir o usuário.');
+    } finally {
+      setDeleteUserPending(null);
+    }
+  }
+
   if (loading) {
     return <div className="grid min-h-[50vh] place-items-center text-sm text-muted-foreground">Carregando permissões…</div>;
   }
@@ -187,6 +269,45 @@ export default function AdminUsuarios() {
            <p className="text-sm leading-relaxed text-sidebar-foreground/65">Somente o administrador acessa este espaço e cria usuários. Os usuários da recepção podem registrar prestadores, consultar visitas e acompanhar o movimento da escola.</p>
            <div className="mt-6 rounded-xl border border-sidebar-foreground/10 bg-sidebar-accent/60 p-4 text-xs leading-relaxed text-sidebar-foreground/60">Compartilhe a senha inicial somente com o usuário responsável. O administrador continua sendo o único responsável por novos acessos.</div>
         </aside>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <div className="flex items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><UsersRound className="h-5 w-5" /></div>
+          <div><h2 className="text-lg font-bold tracking-tight">Usuários cadastrados</h2><p className="mt-1 text-xs text-muted-foreground">Consulte os acessos e redefina a senha de qualquer integrante, inclusive a sua.</p></div>
+        </div>
+        {usersError && <p className="mt-5 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{usersError}</p>}
+        {usersMessage && <p className="mt-5 flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{usersMessage}</p>}
+        {usersLoading ? <div className="mt-6 space-y-3"><div className="skeleton h-20 rounded-xl" /><div className="skeleton h-20 rounded-xl" /></div> : users.length ? (
+          <div className="mt-6 space-y-3">
+            {users.map((user) => (
+              <div key={user.user_id} className="rounded-xl border border-border bg-background p-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold">{user.full_name}</p>
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{user.role === 'admin' ? 'Administrador' : 'Recepção'}</span>
+                      {user.user_id === profile.user_id && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Você</span>}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">@{user.username}</p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="relative min-w-0 sm:w-56">
+                      <KeyRound className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <input type="password" minLength={6} value={passwords[user.user_id] ?? ''} onChange={(event) => setPasswords((current) => ({ ...current, [user.user_id]: event.target.value }))} placeholder="Nova senha (mín. 6)" className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" />
+                    </div>
+                    <button type="button" onClick={() => updatePassword(user)} disabled={passwordPending === user.user_id || !(passwords[user.user_id] ?? '')} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+                      {passwordPending === user.user_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Salvar senha
+                    </button>
+                    {user.user_id !== profile.user_id && <button type="button" onClick={() => deleteUser(user)} disabled={deleteUserPending === user.user_id} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-destructive/20 px-3 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50">
+                      {deleteUserPending === user.user_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}Excluir
+                    </button>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : <p className="mt-6 rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nenhum usuário cadastrado.</p>}
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
