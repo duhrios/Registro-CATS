@@ -191,6 +191,39 @@ function AccessGate({ isMockMode }: { isMockMode: boolean }) {
     };
   }, [client]);
 
+  useEffect(() => {
+    if (!session) {
+      setIsAdmin(false);
+      return;
+    }
+
+    let active = true;
+    fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then(async (response) => {
+        const payload = (await response.json()) as {
+          error?: string;
+          profile?: { role?: string };
+        };
+        if (response.status === 401) {
+          await client.auth.signOut();
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(payload.error ?? 'Não foi possível carregar as permissões.');
+        }
+        if (active) setIsAdmin(payload.profile?.role === 'admin');
+      })
+      .catch(() => {
+        if (active) setIsAdmin(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [client, session]);
+
   if (!session) return <AuthScreen isMockMode={isMockMode} />;
   if (isAdmin === null) return <LoadingScreen message="Carregando permissões…" />;
 
