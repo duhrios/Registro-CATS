@@ -43,7 +43,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd Registro-Modernozip/Registro-Moderno && PORT=8080 MOCK_SUPABASE=true pnpm --filter @workspace/api-server run dev"
+args = "cd Registro-Modernozip/Registro-Moderno && PORT=8080 pnpm --filter @workspace/api-server run dev"
 waitForPort = 8080
 
 [[ports]]
