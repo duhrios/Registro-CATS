@@ -5,7 +5,7 @@ type MockUser = {
   user_metadata: {
     username: string;
     full_name: string;
-    role: "admin";
+    role: "admin" | "user";
   };
 };
 
@@ -20,7 +20,7 @@ const users: MockUser[] = [
     password: "admin123",
     user_metadata: {
       username: "admin",
-      full_name: "Administrador de demonstração",
+      full_name: "Administrador da recepção",
       role: "admin",
     },
   },
@@ -31,7 +31,7 @@ const tables: Record<string, MockRow[]> = {
     {
       user_id: "mock-admin-1",
       username: "admin",
-      full_name: "Administrador de demonstração",
+      full_name: "Administrador da recepção",
       role: "admin",
       created_at: now(),
     },

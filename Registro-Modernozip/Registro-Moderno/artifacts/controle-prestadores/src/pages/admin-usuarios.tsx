@@ -5,7 +5,7 @@ import { useSupabase } from '@/lib/supabase-context';
 type Profile = {
   username: string;
   full_name: string;
-  role: 'admin';
+  role: 'admin' | 'user';
 };
 
 export default function AdminUsuarios() {
@@ -58,7 +58,7 @@ export default function AdminUsuarios() {
         setError(payload.error ?? 'Não foi possível criar o integrante.');
         return;
       }
-      setMessage(`O integrante ${username} foi criado como administrador e já pode entrar.`);
+       setMessage(`O usuário ${username} foi criado para a recepção e já pode entrar.`);
       setUsername('');
       setFullName('');
       setPassword('');
@@ -78,7 +78,7 @@ export default function AdminUsuarios() {
       <section className="mx-auto max-w-xl rounded-2xl border border-destructive/20 bg-card p-8 text-center">
         <ShieldCheck className="mx-auto h-10 w-10 text-destructive" />
         <h1 className="mt-4 text-2xl font-bold">Acesso restrito</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error || 'Somente administradores podem criar integrantes.'}</p>
+         <p className="mt-2 text-sm text-muted-foreground">{error || 'Somente o administrador pode gerenciar usuários.'}</p>
       </section>
     );
   }
@@ -88,10 +88,10 @@ export default function AdminUsuarios() {
       <section className="rise-in flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.18em] text-primary">
-            <UsersRound className="h-3.5 w-3.5" /> Administração
+             <UsersRound className="h-3.5 w-3.5" /> Administração da recepção
           </div>
-          <h1 className="text-3xl font-bold tracking-[-.04em]">Integrantes da equipe</h1>
-          <p className="mt-2 max-w-xl text-sm text-muted-foreground">Crie acessos individuais para a equipe. Todos os novos integrantes começam com perfil de administrador.</p>
+           <h1 className="text-3xl font-bold tracking-[-.04em]">Usuários da recepção</h1>
+           <p className="mt-2 max-w-xl text-sm text-muted-foreground">Crie acessos individuais para a equipe da recepção. Os novos usuários terão apenas as permissões necessárias para registrar e consultar visitas.</p>
         </div>
         <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary">
           <ShieldCheck className="h-4 w-4" /> Seu acesso é administrador
@@ -102,7 +102,7 @@ export default function AdminUsuarios() {
         <form onSubmit={createUser} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <div className="mb-6 flex items-start gap-3">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><UserPlus className="h-5 w-5" /></div>
-            <div><h2 className="text-lg font-bold tracking-tight">Novo integrante</h2><p className="mt-1 text-xs text-muted-foreground">O integrante usará estes dados para entrar no sistema.</p></div>
+             <div><h2 className="text-lg font-bold tracking-tight">Novo usuário</h2><p className="mt-1 text-xs text-muted-foreground">O usuário usará estes dados para entrar no sistema.</p></div>
           </div>
           <div className="space-y-4">
             <label className="block text-sm font-medium">Nome completo
@@ -122,14 +122,14 @@ export default function AdminUsuarios() {
           {error && <p className="mt-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
           {message && <p className="mt-4 flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{message}</p>}
           <button type="submit" disabled={pending} className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">
-            {pending && <Loader2 className="h-4 w-4 animate-spin" />} Criar integrante administrador
+             {pending && <Loader2 className="h-4 w-4 animate-spin" />} Criar usuário da recepção
           </button>
         </form>
 
         <aside className="rounded-2xl bg-sidebar p-6 text-sidebar-foreground">
-          <div className="mb-5 flex items-center gap-2 text-sidebar-primary"><ShieldCheck className="h-5 w-5" /><h2 className="font-bold">Permissão padrão</h2></div>
-          <p className="text-sm leading-relaxed text-sidebar-foreground/65">Este ambiente usa uma equipe administrativa. Cada integrante criado poderá registrar prestadores, consultar visitas e criar novos acessos.</p>
-          <div className="mt-6 rounded-xl border border-sidebar-foreground/10 bg-sidebar-accent/60 p-4 text-xs leading-relaxed text-sidebar-foreground/60">Compartilhe a senha inicial somente com a pessoa responsável. Ela poderá alterá-la futuramente pelo painel do Supabase.</div>
+           <div className="mb-5 flex items-center gap-2 text-sidebar-primary"><ShieldCheck className="h-5 w-5" /><h2 className="font-bold">Permissão dos usuários</h2></div>
+           <p className="text-sm leading-relaxed text-sidebar-foreground/65">Somente o administrador acessa este espaço e cria usuários. Os usuários da recepção podem registrar prestadores, consultar visitas e acompanhar o movimento da escola.</p>
+           <div className="mt-6 rounded-xl border border-sidebar-foreground/10 bg-sidebar-accent/60 p-4 text-xs leading-relaxed text-sidebar-foreground/60">Compartilhe a senha inicial somente com o usuário responsável. O administrador continua sendo o único responsável por novos acessos.</div>
         </aside>
       </section>
     </div>

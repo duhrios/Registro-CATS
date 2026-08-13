@@ -9,7 +9,7 @@ type StaffProfile = {
   user_id: string;
   username: string;
   full_name: string;
-  role: "admin";
+  role: "admin" | "user";
   created_at: string;
 };
 
@@ -51,6 +51,7 @@ async function createStaffProfile(
   userId: string,
   username: string,
   fullName: string,
+  role: StaffProfile["role"],
 ) {
   const { data, error } = await supabase
     .from("staff_profiles")
@@ -59,7 +60,7 @@ async function createStaffProfile(
         user_id: userId,
         username,
         full_name: fullName,
-        role: "admin",
+         role,
       },
       { onConflict: "user_id" },
     )
@@ -74,6 +75,7 @@ async function createAuthUser(
   username: string,
   fullName: string,
   password: string,
+  role: StaffProfile["role"],
 ) {
   const { data, error } = await supabase.auth.admin.createUser({
     email: internalEmail(username),
@@ -82,7 +84,7 @@ async function createAuthUser(
     user_metadata: {
       username,
       full_name: fullName,
-      role: "admin",
+      role,
     },
   });
 
@@ -91,7 +93,7 @@ async function createAuthUser(
   }
 
   try {
-    const profile = await createStaffProfile(data.user.id, username, fullName);
+    const profile = await createStaffProfile(data.user.id, username, fullName, role);
     return { user: data.user, profile };
   } catch (profileError) {
     await supabase.auth.admin.deleteUser(data.user.id);
@@ -171,7 +173,7 @@ router.post("/auth/bootstrap", async (req: Request, res: Response) => {
       return;
     }
 
-    const { profile } = await createAuthUser(username, fullName, password);
+    const { profile } = await createAuthUser(username, fullName, password, "admin");
     const { data, error } = await supabase.auth.signInWithPassword({
       email: internalEmail(username),
       password,
@@ -212,11 +214,11 @@ router.post("/auth/users", async (req: AuthenticatedRequest, res: Response) => {
       return;
     }
 
-    const { user, profile } = await createAuthUser(username, fullName, password);
+    const { user, profile } = await createAuthUser(username, fullName, password, "user");
     res.status(201).json({
       user: { id: user.id },
       profile,
-      message: "Integrante criado como administrador.",
+      message: "Usuário criado para a recepção.",
     });
   } catch (error) {
     req.log?.error(error);

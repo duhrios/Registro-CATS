@@ -36,7 +36,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 ## Architecture decisions
 
 - Supabase Auth protects both the browser experience and API routes; unauthenticated users cannot access provider or visit records.
-- The first account is created as the initial administrator from the "Primeiro acesso" screen. New accounts are created from `/admin` and are administrators by default.
+- The first account is created as the initial administrator from the "Primeiro acesso" screen. Only that administrator can access `/admin` and create reception users; new accounts receive the standard `user` role.
 - The frontend uses relative `/api` routes so a reverse proxy can connect it to the API service.
 - Provider photos are persisted as validated image data in Supabase Postgres.
 

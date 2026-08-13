@@ -28,7 +28,7 @@ export function createBrowserSupabaseClient(url: string, anonKey: string) {
                 aud: 'authenticated',
                 role: 'authenticated',
                 email: 'admin@usuarios.portico.app',
-                user_metadata: { username: 'admin', full_name: 'Administrador de demonstração', role: 'admin' },
+                user_metadata: { username: 'admin', full_name: 'Administrador da recepção', role: 'admin' },
                 app_metadata: {},
                 created_at: new Date().toISOString(),
               }
@@ -37,7 +37,7 @@ export function createBrowserSupabaseClient(url: string, anonKey: string) {
                 aud: 'authenticated',
                 role: 'authenticated',
                 email: 'usuario@usuarios.portico.app',
-                user_metadata: { username: 'usuario', full_name: 'Integrante de demonstração', role: 'admin' },
+                user_metadata: { username: 'usuario', full_name: 'Usuário da recepção', role: 'user' },
                 app_metadata: {},
                 created_at: new Date().toISOString(),
               };

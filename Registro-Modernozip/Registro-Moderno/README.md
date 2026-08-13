@@ -1,13 +1,13 @@
 # Registro-Moderno
 
-Sistema de controle de prestadores para escolas, com cadastro de pessoas,
-registro de entradas e consulta do histórico de visitas. A interface usa uma
-paleta inspirada na Educação Adventista, com azul institucional, branco e
-detalhes dourados.
+Sistema de controle de prestadores para a recepção do Colégio Adventista do
+Taboão da Serra, com cadastro de pessoas, registro de entradas e consulta do
+histórico de visitas. A interface usa uma paleta inspirada na Educação
+Adventista, com azul institucional, branco e detalhes dourados.
 
 ## Funcionalidades
 
-- Autenticação da equipe pela Supabase Auth.
+- Autenticação da equipe da recepção pela Supabase Auth.
 - Cadastro de prestadores com nome, empresa, serviço e foto.
 - Captura e substituição de foto pela webcam.
 - Busca rápida no diretório de prestadores.
@@ -90,8 +90,10 @@ pnpm --filter @workspace/api-server run build
 ## Estado do projeto
 
 A base do projeto já está preparada para Supabase, incluindo autenticação,
-rotas protegidas, schema SQL e proxy entre frontend e API. A identidade visual
-global foi ajustada para a paleta da Educação Adventista.
+rotas protegidas, schema SQL e proxy entre frontend e API. O primeiro acesso
+cria o único administrador; os usuários seguintes são criados por ele com
+permissões padrão da recepção. A identidade visual global foi ajustada para a
+paleta da Educação Adventista.
 
 Nesta atualização, os comandos de execução não foram iniciados no ambiente de
 desenvolvimento; as verificações acima ficam disponíveis para execução local ou

@@ -74,7 +74,7 @@ function AuthScreen({ isMockMode = false }: { isMockMode?: boolean }) {
         setError(sessionError.message);
         return;
       }
-      if (mode === 'bootstrap') setMessage('Administrador criado. Bem-vindo ao Pórtico.');
+      if (mode === 'bootstrap') setMessage('Administrador criado. Bem-vindo à recepção.');
     } catch {
       setError('Não foi possível conectar ao servidor. Tente novamente.');
     } finally {
@@ -90,7 +90,7 @@ function AuthScreen({ isMockMode = false }: { isMockMode?: boolean }) {
             <span className="font-mono text-lg font-bold">P</span>
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[.18em] text-primary">
-            Pórtico · Controle escolar
+            Recepção · Colégio Adventista
           </p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight">
             {mode === 'sign-in' ? 'Acesso da equipe' : 'Primeiro acesso'}
@@ -129,7 +129,7 @@ function AuthScreen({ isMockMode = false }: { isMockMode?: boolean }) {
               value={username}
               onChange={(event) => setUsername(event.target.value.toLowerCase())}
               className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-              placeholder="ex.: portaria"
+              placeholder="ex.: recepcao"
             />
             <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Use letras, números, ponto, hífen ou sublinhado.</span>
           </label>
@@ -174,6 +174,7 @@ function AuthScreen({ isMockMode = false }: { isMockMode?: boolean }) {
 function AccessGate({ isMockMode }: { isMockMode: boolean }) {
   const client = useSupabase();
   const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -182,6 +183,7 @@ function AccessGate({ isMockMode }: { isMockMode: boolean }) {
     });
     const { data } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+      setIsAdmin(null);
     });
     return () => {
       active = false;
@@ -190,8 +192,9 @@ function AccessGate({ isMockMode }: { isMockMode: boolean }) {
   }, [client]);
 
   if (!session) return <AuthScreen isMockMode={isMockMode} />;
+  if (isAdmin === null) return <LoadingScreen message="Carregando permissões…" />;
 
-  return <Router isAdmin={session.user.user_metadata?.role === 'admin'} />;
+  return <Router isAdmin={isAdmin} />;
 }
 
 function Router({ isAdmin }: { isAdmin: boolean }) {

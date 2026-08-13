@@ -5,13 +5,13 @@ export type StaffProfile = {
   user_id: string;
   username: string;
   full_name: string;
-  role: "admin";
+  role: "admin" | "user";
   created_at: string;
 };
 
 export type AuthenticatedRequest = Request & {
   staffId?: string;
-  staffRole?: "admin";
+  staffRole?: "admin" | "user";
   staffProfile?: StaffProfile;
 };
 
