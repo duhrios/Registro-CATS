@@ -157,6 +157,18 @@ function AuthScreen({ isMockMode = false }: { isMockMode?: boolean }) {
             {pending ? 'Aguarde…' : mode === 'sign-in' ? 'Entrar' : 'Criar administrador'}
           </button>
         </form>
+        <button
+          type="button"
+          onClick={() => {
+            setMode((currentMode) => (currentMode === 'sign-in' ? 'bootstrap' : 'sign-in'));
+            setError('');
+            setMessage('');
+          }}
+          className="mt-4 w-full text-center text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          data-testid="button-toggle-first-access"
+        >
+          {mode === 'sign-in' ? 'Primeiro acesso? Criar administrador' : 'Voltar para o login'}
+        </button>
       </div>
     </div>
   );
