@@ -76,7 +76,7 @@ const tables: Record<string, MockRow[]> = {
   ],
 };
 
-let nextIds = { providers: 3, provider_visits: 2 };
+let nextIds = { providers: 3, provider_visits: 2, users: 2 };
 const sessions = new Map<string, MockUser>();
 
 function clone<T>(value: T): T {
@@ -265,7 +265,7 @@ export function createMockSupabase() {
             return { data: { user: null }, error: new Error("User already registered") };
           }
           const user: MockUser = {
-            id: `mock-user-${users.length + 1}`,
+            id: `mock-user-${nextIds.users++}`,
             email,
             password,
             user_metadata,
@@ -276,6 +276,9 @@ export function createMockSupabase() {
         async deleteUser(userId: string) {
           const index = users.findIndex((user) => user.id === userId);
           if (index >= 0) users.splice(index, 1);
+          for (const [token, sessionUser] of sessions) {
+            if (sessionUser.id === userId) sessions.delete(token);
+          }
           tables.staff_profiles = tables.staff_profiles.filter((profile) => profile.user_id !== userId);
           return { data: { user: null }, error: null };
         },
