@@ -1,0 +1,37 @@
+1.	Corrigir o indicador “Esperados agora”
+O backend sempre retorna currentlyExpected: 0. Se ainda não existe agenda de visitas, é melhor remover esse cartão por enquanto; caso contrário, criar uma agenda/previsão real para não exibir um número enganoso.
+2.	Trocar fotos em Base64 no banco por armazenamento de arquivos
+photo_data guarda a imagem inteira como texto. Com muitas fotos, isso aumenta banco, backups e respostas da API. O ideal é comprimir a foto no navegador e salvar em Supabase Storage, mantendo apenas a URL ou caminho no banco.
+3.	Melhorar desempenho da listagem
+A API busca cada prestador e depois faz uma contagem de visitas separada para cada um. Esse padrão fica lento quando o diretório crescer. Use uma consulta agregada/view no Supabase e adicione paginação.
+4.	Evitar buscas limitadas no frontend
+O dashboard consulta no máximo 20 prestadores e o diretório 100. Com mais registros, uma pessoa pode não encontrar alguém mesmo pesquisando. A busca deve ser server-side, com debounce e paginação/infinite scroll.
+5.	Reforçar segurança da autenticação
+•	aumentar a exigência de senha;
+•	adicionar limite de tentativas/rate limit no login;
+•	registrar tentativas e alterações administrativas;
+•	proteger o primeiro cadastro contra duas requisições simultâneas;
+•	remover o modo mock antes da publicação;
+•	considerar expiração/revogação de sessões.
+6.	Criar uma visão de “prestadores dentro da escola”
+Já existe registro de saída, mas a experiência principal ainda é centrada em entradas recentes. Um painel com visitas abertas, duração e botão rápido “Registrar saída” seria mais útil para a recepção.
+7.	Auditoria e LGPD
+O sistema guarda RG e foto. Vale registrar quem criou, editou ou excluiu cadastros/visitas, definir retenção e restringir exclusões. Exclusões de prestador também apagam visitas relacionadas, então um arquivamento seria mais seguro que apagar definitivamente.
+8.	Pequenos ajustes de usabilidade
+•	adicionar autocomplete="username" e autocomplete="current-password" no login;
+•	mostrar mensagens específicas de erro ao salvar;
+•	prevenir entradas duplicadas abertas para o mesmo prestador;
+•	confirmar quando a câmera não tiver permissão;
+•	melhorar navegação por teclado e foco nos resultados da busca.
+9.	Testes antes de produção
+Eu adicionaria testes para login, primeiro administrador, permissões, cadastro com RG duplicado, exclusão em cascata, registro/saída e persistência após reiniciar a API.
+Minha ordem recomendada: Supabase real → segurança/autenticação → indicador de visitas abertas → fotos no Storage → desempenho/paginação → auditoria e testes.
+2 actions
+As melhorias já foram priorizadas e registradas:
+•	#2: Conectar ao Supabase real
+•	#3: Publicar o app
+•	#4: Mostrar quem ainda está dentro da escola
+•	#5: Tornar o diretório rápido com muitos prestadores
+•	#6: Proteger RGs e fotos com armazenamento e auditoria
+A ordem mais importante continua sendo: persistência real → segurança → acompanhamento de visitas abertas → desempenho → LGPD/auditoria.
+

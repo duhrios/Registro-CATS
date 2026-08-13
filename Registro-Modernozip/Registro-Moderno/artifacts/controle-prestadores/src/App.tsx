@@ -128,6 +128,7 @@ function AuthScreen({ isMockMode = false }: { isMockMode?: boolean }) {
               maxLength={32}
               value={username}
               onChange={(event) => setUsername(event.target.value.toLowerCase())}
+              autoComplete="username"
               className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
               placeholder="ex.: recepcao"
             />
@@ -141,6 +142,7 @@ function AuthScreen({ isMockMode = false }: { isMockMode?: boolean }) {
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
               className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
               placeholder="Mínimo de 6 caracteres"
             />
