@@ -278,13 +278,40 @@ function App() {
   const [configError, setConfigError] = useState('');
 
   useEffect(() => {
-    fetch('/api/config')
-      .then(async (response) => {
-        if (!response.ok) throw new Error('Não foi possível carregar a configuração do Supabase.');
-        return response.json() as Promise<{ url: string; anonKey: string }>;
-      })
-      .then(setConfig)
-      .catch((error: Error) => setConfigError(error.message));
+    let active = true;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    const maxAttempts = 5;
+
+    async function loadConfig(attempt = 1) {
+      try {
+        const response = await fetch('/api/config', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error('Não foi possível carregar a configuração do Supabase.');
+        }
+
+        const payload = (await response.json()) as Partial<{ url: string; anonKey: string }>;
+        if (!payload.url || !payload.anonKey) {
+          throw new Error('A configuração do Supabase está incompleta.');
+        }
+
+        if (active) setConfig({ url: payload.url, anonKey: payload.anonKey });
+      } catch (error) {
+        if (!active) return;
+        if (attempt < maxAttempts) {
+          retryTimer = setTimeout(() => {
+            void loadConfig(attempt + 1);
+          }, attempt * 500);
+          return;
+        }
+        setConfigError(error instanceof Error ? error.message : 'Não foi possível carregar a configuração do Supabase.');
+      }
+    }
+
+    void loadConfig();
+    return () => {
+      active = false;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, []);
 
   const client = useMemo<BrowserSupabaseClient | null>(

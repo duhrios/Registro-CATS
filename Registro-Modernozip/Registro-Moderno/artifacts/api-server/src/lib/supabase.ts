@@ -1,11 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.SUPABASE_URL?.trim().replace(/^["']|["']$/g, "").replace(/\/+$/, "");
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+function requiredEnvironmentValue(name: string) {
+  const value = process.env[name]?.trim().replace(/^["']|["']$/g, "");
+  if (!value) throw new Error(`${name} must be configured in the server environment.`);
+  return value;
+}
 
-if (!url || !/^https?:\/\//i.test(url) || !serviceRoleKey) {
+const url = requiredEnvironmentValue("SUPABASE_URL").replace(/\/+$/, "");
+const serviceRoleKey = requiredEnvironmentValue("SUPABASE_SERVICE_ROLE_KEY");
+
+if (!/^https?:\/\//i.test(url)) {
   throw new Error(
-    "SUPABASE_URL must be an HTTP(S) project URL and SUPABASE_SERVICE_ROLE_KEY must be configured.",
+    "SUPABASE_URL must be an HTTP(S) project URL.",
   );
 }
 
@@ -34,7 +40,6 @@ export const supabase = createClient(url, serviceRoleKey, {
 });
 
 export function publicSupabaseConfig() {
-  const anonKey = process.env.SUPABASE_ANON_KEY;
-  if (!anonKey) throw new Error("SUPABASE_ANON_KEY must be configured.");
+  const anonKey = requiredEnvironmentValue("SUPABASE_ANON_KEY");
   return { url, anonKey };
 }

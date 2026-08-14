@@ -44,14 +44,19 @@ supabase/
 
 ## Configuração
 
-Configure as variáveis abaixo no ambiente de execução. Não coloque chaves em
-arquivos versionados:
+Configure as variáveis abaixo em **Secrets** do Replit (ou no ambiente seguro
+do deploy). O arquivo `.env.example` é apenas uma referência; não coloque
+valores reais em arquivos versionados:
 
 ```text
 SUPABASE_URL
 SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 ```
+
+`SUPABASE_SERVICE_ROLE_KEY` é usada somente pela API. O frontend recebe apenas
+`SUPABASE_URL` e `SUPABASE_ANON_KEY` por meio de `GET /api/config`; nenhuma
+credencial de serviço é enviada ao navegador.
 
 Execute `supabase/schema.sql` uma vez no SQL Editor do projeto Supabase antes
 de usar o sistema.
@@ -77,7 +82,9 @@ PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run dev
 ```
 
 O frontend usa as rotas relativas `/api` e encaminha as requisições para a API
-na porta `8080` durante o desenvolvimento.
+na porta `8080` durante o desenvolvimento. Durante a inicialização, ele tenta
+carregar a configuração algumas vezes para aguardar a API subir; se as Secrets
+estiverem ausentes, a API permanece bloqueada e não entra em modo de teste.
 
 ## Configurar a pasta do Google Drive
 

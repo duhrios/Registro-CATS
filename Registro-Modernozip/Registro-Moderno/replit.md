@@ -12,6 +12,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - Database: execute `supabase/schema.sql` once in the Supabase SQL Editor; this creates the staff profile table and access roles
 - Required secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- Safe reference: `.env.example` contains names only; configure the actual values through Replit Secrets
 - Authentication: the application login uses a username and password; the API maps the username to an internal Supabase Auth account and validates bearer tokens
 
 ## Stack
@@ -36,6 +37,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - Supabase Auth protects both the browser experience and API routes; unauthenticated users cannot access provider or visit records.
 - The first account is created as the initial administrator from the "Primeiro acesso" screen. Administrators can access `/admin`, create users with either the `admin` or `user` role, and edit each user's display name, password, and role. The current administrator cannot remove their own administrator role.
 - The frontend uses relative `/api` routes so a reverse proxy can connect it to the API service.
+- The frontend retries `GET /api/config` during startup so a brief API workflow start-up race does not leave the login screen stuck on a configuration error.
 - Provider photos are persisted as validated image data in Supabase Postgres.
 
 ## Product
