@@ -1,0 +1,88 @@
+
+Responding to cancellation
+
+Responding to cancellation
+Tudo bem — a conexão OAuth do Google Drive foi cancelada e nenhuma alteração foi feita.
+
+Por enquanto, o sistema continua funcionando no modo manual:
+
+Crie uma pasta no Google Drive institucional.
+Copie o link da pasta.
+Entre como administrador no sistema.
+Acesse Administração da recepção → Pasta de fotos online.
+Cole o link e salve.
+Nesse modo, o sistema apenas armazena o endereço da pasta; as fotos ainda precisam ser enviadas manualmente.
+
+Para ativar o envio automático por prestador ou por ano/mês, será necessário aceitar a conexão OAuth do Google Drive posteriormente.
+
+
+
+Worked for 7 seconds
+https://drive.google.com/drive/folders/111NSdvHV5EQIcVdid9YHm7fPLD3yLN5u
+
+5 minutes ago
+Esse link está válido:
+
+https://drive.google.com/drive/folders/111NSdvHV5EQIcVdid9YHm7fPLD3yLN5u
+
+Para configurá-lo no sistema:
+
+Entre com uma conta administradora.
+Acesse Administração da recepção.
+Vá até Pasta de fotos online.
+Cole o link.
+Clique em Salvar link.
+O sistema validará e armazenará esse endereço no Supabase. As fotos continuarão sendo enviadas manualmente para essa pasta até que a integração OAuth do Google Drive seja autorizada.
+
+
+
+Worked for 7 seconds
+
+Attached Image
+4 minutes ago
+Diagnosing login errors
+
+Diagnosing login errors
+A imagem mostra que o frontend está funcionando, mas o login está recebendo erro do backend relacionado ao schema do Supabase. Vou verificar os logs recentes e confirmar exatamente qual tabela ou coluna está faltando, sem expor credenciais.
+
+
+
+2 actions
+O log confirmou a causa exata: a tabela staff_profiles do Supabase ainda não recebeu as colunas novas must_change_password, is_active e password_changed_at. O backend está atualizado, mas o banco ficou no schema antigo. Vou verificar o procedimento seguro de migração e preparar a correção sem expor nenhuma Secret.
+
+
+
+2 actions
+A imagem confirma um problema no schema do Supabase, não no usuário ou na senha.
+
+O log da API mostra:
+
+column staff_profiles.must_change_password does not exist
+
+A tabela do Supabase está em uma versão antiga. Para corrigir:
+
+Abra o projeto no Supabase Dashboard.
+Acesse SQL Editor.
+Execute este SQL:
+alter table public.staff_profiles
+  add column if not exists must_change_password boolean not null default false;
+alter table public.staff_profiles
+  add column if not exists is_active boolean not null default true;
+alter table public.staff_profiles
+  add column if not exists password_changed_at timestamptz;
+alter table public.providers
+  add column if not exists notes text;
+alter table public.providers
+  add column if not exists responsible_department text;
+alter table public.providers
+  add column if not exists service_valid_until date;
+alter table public.provider_visits
+  add column if not exists exit_at timestamptz;
+
+Depois, atualize a página e tente entrar novamente.
+
+Para garantir que todos os recursos novos estejam disponíveis — histórico de alterações, exportação, controles de senha e configurações do Drive — o ideal é executar também o arquivo completo:
+
+Registro-Modernozip/Registro-Moderno/supabase/schema.sql
+
+Esse arquivo usa if not exists e foi preparado para atualizar uma instalação antiga sem apagar os dados existentes.
