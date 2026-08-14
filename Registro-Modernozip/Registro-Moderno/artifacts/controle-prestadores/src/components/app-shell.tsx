@@ -1,4 +1,4 @@
-import { Bell, Clock3, LayoutDashboard, LogOut, Moon, Plus, Search, ShieldCheck, Sun, UsersRound, UserPlus, X } from 'lucide-react';
+import { Bell, CheckCircle2, Clock3, LayoutDashboard, LogOut, Moon, Plus, Search, ShieldCheck, Sun, UsersRound, UserPlus, WifiOff, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,64 @@ const navItems = [
   { href: '/historico', label: 'Histórico de visitas', icon: Clock3 },
   { href: '/prestadores', label: 'Prestadores', icon: UsersRound },
 ];
+
+function ApiStatusBanner() {
+  const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [retryAttempt, setRetryAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+
+    async function checkApi() {
+      if (!navigator.onLine) {
+        if (active) setStatus('offline');
+        return;
+      }
+
+      const controller = new AbortController();
+      timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        const response = await fetch('/api/healthz', { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error('API indisponível');
+        if (active) setStatus('online');
+      } catch {
+        if (active) setStatus('offline');
+      } finally {
+        if (timeout) clearTimeout(timeout);
+      }
+    }
+
+    const handleOffline = () => setStatus('offline');
+    const handleOnline = () => void checkApi();
+    void checkApi();
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    const interval = window.setInterval(() => void checkApi(), 30000);
+
+    return () => {
+      active = false;
+      if (timeout) clearTimeout(timeout);
+      window.clearInterval(interval);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [retryAttempt]);
+
+  if (status !== 'offline') return null;
+
+  return (
+    <div role="status" aria-live="polite" className="mb-5 flex flex-col gap-3 rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-2">
+        <WifiOff className="mt-0.5 h-4 w-4 shrink-0" />
+        <span><strong>Conexão com a API indisponível.</strong> Os dados podem não carregar ou ser salvos até o serviço voltar.</span>
+      </div>
+      <button type="button" onClick={() => { setStatus('checking'); setRetryAttempt((attempt) => attempt + 1); }} className="inline-flex items-center gap-1.5 self-start font-semibold underline underline-offset-2 sm:self-auto">
+        <CheckCircle2 className="h-3.5 w-3.5" />Verificar novamente
+      </button>
+    </div>
+  );
+}
 
 export function AppShell({ children, isAdmin }: { children: React.ReactNode; isAdmin: boolean }) {
   const [location, setLocation] = useLocation();
@@ -165,7 +223,7 @@ export function AppShell({ children, isAdmin }: { children: React.ReactNode; isA
            <Link href="/cadastro" data-testid="link-header-cadastro" className="hidden items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5 sm:flex"><Plus className="h-3.5 w-3.5" />Registrar entrada</Link>
           </div>
         </header>
-        <main className="mx-auto max-w-[1450px] px-5 py-7 sm:px-8 lg:px-10">{children}</main>
+        <main className="mx-auto max-w-[1450px] px-5 py-7 sm:px-8 lg:px-10"><ApiStatusBanner />{children}</main>
       </div>
       {mobileSearchOpen && (
         <div className="fixed inset-x-3 top-[78px] z-40 rounded-2xl border border-border bg-card p-3 shadow-2xl sm:hidden">

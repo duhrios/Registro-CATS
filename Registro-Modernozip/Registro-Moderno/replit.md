@@ -55,7 +55,7 @@ The API requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and
 - The frontend retries `GET /api/config` during startup so a brief API workflow start-up race does not leave the login screen stuck on a configuration error.
 - Provider photos are persisted as validated image data in Supabase Postgres.
 - User/provider create, update, and delete operations write to `audit_logs`; administrators can review the recent activity and download provider CSV or a full JSON backup.
-- The provider directory has mobile search, dark mode, client-side pagination, RG duplicate warnings, and extended fields for department, validity, and notes.
+- The provider directory has mobile search, dark mode, client-side pagination, RG duplicate warnings, and extended fields for department, validity, and notes. The authenticated shell polls the API health endpoint and displays a recovery action when the service is unavailable. The browser Supabase client is cached and uses one explicit storage key to avoid multiple-client session warnings.
 
 ## Product
 
