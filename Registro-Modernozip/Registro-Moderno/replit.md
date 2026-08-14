@@ -70,7 +70,7 @@ Interface copy is in Brazilian Portuguese.
 - Vite requires both `PORT` and `BASE_PATH`.
 - The API workflow uses port 8080 and must run alongside the frontend for data requests.
 - Never commit Supabase keys; configure them through the environment's secret store.
-- Google Drive: create a folder, configure its sharing permission, copy its browser URL (`https://drive.google.com/drive/folders/...`) and paste it in **Administração da recepção → Pasta de fotos online**. The application currently stores this official folder link; automatic photo upload requires a future Google Drive OAuth integration.
+- Google Drive: the folder URL is stored in **Administração da recepção → Sincronização com Google Drive**. Outside Replit, configure standard Google OAuth 2.0 with `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`, and `GOOGLE_DRIVE_REDIRECT_URI`. A manual button and a server-side 10-minute scheduler upload changed provider photos through the official Drive API.
 - Supabase schema changes must be applied in the SQL Editor before using audit logs, extended provider fields, or password controls.
 
 ## Pointers

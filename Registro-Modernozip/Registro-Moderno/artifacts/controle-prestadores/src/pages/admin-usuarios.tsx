@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { CheckCircle2, Download, KeyRound, Link2, Loader2, Save, ShieldCheck, Trash2, UserPlus, UsersRound, History } from 'lucide-react';
+import { CheckCircle2, Download, KeyRound, Link2, Loader2, RefreshCw, Save, ShieldCheck, Trash2, UserPlus, UsersRound, History } from 'lucide-react';
 import { useSupabase } from '@/lib/supabase-context';
 
 type Profile = {
@@ -38,6 +38,15 @@ export default function AdminUsuarios() {
   const [drivePending, setDrivePending] = useState(false);
   const [driveMessage, setDriveMessage] = useState('');
   const [driveError, setDriveError] = useState('');
+  const [driveStatus, setDriveStatus] = useState<{
+    configured: boolean;
+    missingConfiguration: string[];
+    lastSyncAt: string | null;
+    lastSyncStatus: string | null;
+    lastSyncMessage: string | null;
+    lastSyncCount: number;
+  } | null>(null);
+  const [driveSyncPending, setDriveSyncPending] = useState(false);
   const [users, setUsers] = useState<Profile[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userEdits, setUserEdits] = useState<Record<string, UserEdit>>({});
@@ -73,14 +82,21 @@ export default function AdminUsuarios() {
     if (!profile || profile.role !== 'admin') return;
     let active = true;
     setDriveLoading(true);
-    supabase.auth.getSession().then(({ data }) => fetch('/api/settings/drive', {
-      headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
-    }))
-      .then(async (response) => {
-        const payload = await response.json() as { driveFolderUrl?: string | null; error?: string };
-        if (!response.ok) throw new Error(payload.error ?? 'Não foi possível carregar o link do Drive.');
-        if (active) setDriveFolderUrl(payload.driveFolderUrl ?? '');
-      })
+    supabase.auth.getSession().then(async ({ data }) => {
+      const headers = { Authorization: `Bearer ${data.session?.access_token ?? ''}` };
+      const [settingsResponse, statusResponse] = await Promise.all([
+        fetch('/api/settings/drive', { headers }),
+        fetch('/api/settings/drive/status', { headers }),
+      ]);
+      const settingsPayload = await settingsResponse.json() as { driveFolderUrl?: string | null; error?: string };
+      const statusPayload = await statusResponse.json() as typeof driveStatus & { error?: string };
+      if (!settingsResponse.ok) throw new Error(settingsPayload.error ?? 'Não foi possível carregar o link do Drive.');
+      if (!statusResponse.ok) throw new Error(statusPayload.error ?? 'Não foi possível verificar a configuração do Drive.');
+      if (active) {
+        setDriveFolderUrl(settingsPayload.driveFolderUrl ?? '');
+        setDriveStatus(statusPayload);
+      }
+    })
       .catch((requestError: Error) => active && setDriveError(requestError.message))
       .finally(() => active && setDriveLoading(false));
     return () => {
@@ -199,10 +215,38 @@ export default function AdminUsuarios() {
       }
       setDriveFolderUrl(payload.driveFolderUrl ?? '');
       setDriveMessage('Link da pasta de fotos salvo.');
+      const statusResponse = await fetch('/api/settings/drive/status', {
+        headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+      });
+      if (statusResponse.ok) setDriveStatus(await statusResponse.json());
     } catch {
       setDriveError('Não foi possível conectar ao servidor. Tente novamente.');
     } finally {
       setDrivePending(false);
+    }
+  }
+
+  async function syncDriveNow() {
+    setDriveError('');
+    setDriveMessage('');
+    setDriveSyncPending(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch('/api/settings/drive/sync', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+      });
+      const payload = await response.json() as { message?: string; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'Não foi possível sincronizar o Google Drive.');
+      setDriveMessage(payload.message ?? 'Sincronização concluída.');
+      const statusResponse = await fetch('/api/settings/drive/status', {
+        headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+      });
+      if (statusResponse.ok) setDriveStatus(await statusResponse.json());
+    } catch (requestError) {
+      setDriveError(requestError instanceof Error ? requestError.message : 'Não foi possível sincronizar o Google Drive.');
+    } finally {
+      setDriveSyncPending(false);
     }
   }
 
@@ -436,15 +480,29 @@ export default function AdminUsuarios() {
       <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
         <div className="flex items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Link2 className="h-5 w-5" /></div>
-          <div><h2 className="text-lg font-bold tracking-tight">Pasta de fotos online</h2><p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Cole o link da pasta do Google Drive que a equipe usará para organizar as fotos dos prestadores. Neste momento o sistema apenas guarda o link de acesso; o envio automático de arquivos ainda depende da conexão oficial com o Google Drive.</p></div>
+           <div><h2 className="text-lg font-bold tracking-tight">Sincronização com Google Drive</h2><p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">As fotos dos prestadores são enviadas para a pasta configurada. O botão faz a sincronização imediata; o servidor repete a operação automaticamente a cada 10 minutos.</p></div>
         </div>
         <form onSubmit={saveDriveFolder} className="mt-5 flex flex-col gap-3 sm:flex-row">
           <input type="url" required={false} pattern="https://(www\.)?drive\.google\.com/drive(/[u]/[0-9]+)?/folders/.+" value={driveFolderUrl} onChange={(event) => setDriveFolderUrl(event.target.value)} disabled={driveLoading} placeholder="https://drive.google.com/drive/folders/..." className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-60" />
-          <button type="submit" disabled={driveLoading || drivePending} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{drivePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar link</button>
+           <button type="submit" disabled={driveLoading || drivePending} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{drivePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar pasta</button>
         </form>
+         <div className="mt-4 flex flex-col gap-3 rounded-xl border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+           <div className="text-xs">
+             <p className="font-semibold">{driveStatus?.configured ? 'Google Drive configurado' : 'Falta configurar o acesso ao Google Drive'}</p>
+             <p className="mt-1 text-muted-foreground">
+               {driveStatus?.lastSyncAt
+                 ? `Última tentativa: ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(driveStatus.lastSyncAt))}${driveStatus.lastSyncCount ? ` · ${driveStatus.lastSyncCount} arquivo(s)` : ''}`
+                 : 'Nenhuma sincronização realizada ainda.'}
+             </p>
+             {!driveStatus?.configured && <p className="mt-1 text-destructive">Variáveis ausentes: {driveStatus?.missingConfiguration.join(', ') || 'verificando…'}</p>}
+           </div>
+           <button type="button" onClick={syncDriveNow} disabled={driveLoading || driveSyncPending} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-primary/30 px-4 text-xs font-semibold text-primary hover:bg-primary/5 disabled:opacity-50">
+             {driveSyncPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}Sincronizar agora
+           </button>
+         </div>
         {driveError && <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{driveError}</p>}
         {driveMessage && <p className="mt-3 flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{driveMessage}</p>}
-        <p className="mt-3 text-[11px] text-muted-foreground">Apenas o administrador pode alterar este link. Garanta que a pasta esteja compartilhada com as pessoas que precisam acessá-la.</p>
+         <p className="mt-3 text-[11px] text-muted-foreground">Apenas administradores podem alterar esta configuração. O servidor precisa de OAuth 2.0 do Google Drive; o link sozinho não permite gravar arquivos.</p>
       </section>
     </div>
   );

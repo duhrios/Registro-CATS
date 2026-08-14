@@ -44,14 +44,19 @@ supabase/
 
 ## Configuração
 
-Configure as variáveis abaixo em **Secrets** do Replit (ou no ambiente seguro
-do deploy). O arquivo `.env.example` é apenas uma referência; não coloque
-valores reais em arquivos versionados:
+Configure as variáveis abaixo no ambiente seguro do servidor (Docker Compose,
+systemd, painel de hospedagem ou Secrets do provedor). O arquivo `.env.example`
+é apenas uma referência; não coloque valores reais em arquivos versionados:
 
 ```text
 SUPABASE_URL
 SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
+GOOGLE_DRIVE_FOLDER_URL
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+GOOGLE_DRIVE_REFRESH_TOKEN
+GOOGLE_DRIVE_REDIRECT_URI
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` é usada somente pela API. O frontend recebe apenas
@@ -104,9 +109,32 @@ organizar as fotos. Ele ainda não envia arquivos automaticamente para o Drive.
 6. Cole o endereço e clique em **Salvar link**. Somente administradores podem
    alterar essa configuração.
 
-O link não deve conter senha, chave ou token. A conexão para upload automático
-de fotos exigirá uma integração OAuth oficial do Google Drive, que não está
-configurada neste projeto.
+O link não deve conter senha, chave ou token. Para o envio automático fora do
+Replit, crie credenciais OAuth 2.0 no Google Cloud, autorize uma conta da
+escola com escopo do Google Drive e configure o refresh token no servidor.
+O botão **Sincronizar agora** fica em **Administração da recepção →
+Sincronização com Google Drive**; o servidor também tenta sincronizar a cada
+10 minutos.
+
+### Criar o refresh token fora do Replit
+
+1. No [Google Cloud Console](https://console.cloud.google.com/), crie ou
+   selecione um projeto e habilite a **Google Drive API**.
+2. Configure a tela de consentimento OAuth e adicione a conta da escola como
+   usuário de teste, se o aplicativo estiver em modo de testes.
+3. Crie uma credencial OAuth 2.0 para aplicativo Desktop e anote o Client ID e
+   o Client Secret.
+4. Use o [OAuth 2.0 Playground](https://developers.google.com/oauthplayground):
+   em ⚙️, habilite **Use your own OAuth credentials**, informe o Client ID e o
+   Client Secret, selecione o escopo
+   `https://www.googleapis.com/auth/drive.file`, autorize a conta que tem
+   acesso à pasta e troque o código por tokens.
+5. Coloque o valor de `refresh_token` somente no ambiente do servidor como
+   `GOOGLE_DRIVE_REFRESH_TOKEN`. Nunca o coloque no frontend ou no Git.
+
+O processo do API precisa permanecer ativo para executar o intervalo de 10
+minutos. Em hospedagem serverless, use um cron externo para chamar a rotina
+autenticada ou hospede a API como um serviço persistente.
 
 ## Verificações
 

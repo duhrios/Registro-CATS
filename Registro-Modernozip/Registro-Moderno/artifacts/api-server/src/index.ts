@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { syncDrivePhotos } from "./lib/driveSync";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,11 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  const syncInterval = 10 * 60 * 1000;
+  setInterval(() => {
+    void syncDrivePhotos().catch((error) => {
+      logger.warn({ err: error }, "Sincronização automática do Google Drive não concluída");
+    });
+  }, syncInterval);
+  logger.info({ intervalMinutes: 10 }, "Sincronização automática do Google Drive agendada");
 });

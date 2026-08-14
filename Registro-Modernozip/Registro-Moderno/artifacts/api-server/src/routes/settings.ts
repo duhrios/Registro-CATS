@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Response } from "express";
 import type { AuthenticatedRequest } from "../middlewares/supabaseAuthMiddleware";
 import { supabase } from "../lib/supabase";
+import { getDriveStatus, syncDrivePhotos } from "../lib/driveSync";
 
 const router: IRouter = Router();
 
@@ -34,7 +35,7 @@ router.get("/settings/drive", async (req: AuthenticatedRequest, res) => {
     .eq("id", true)
     .maybeSingle<{ drive_folder_url: string | null }>();
   if (error) throw error;
-  res.json({ driveFolderUrl: data?.drive_folder_url ?? null });
+  res.json({ driveFolderUrl: data?.drive_folder_url ?? process.env.GOOGLE_DRIVE_FOLDER_URL?.trim() ?? null });
 });
 
 router.patch("/settings/drive", async (req: AuthenticatedRequest, res) => {
@@ -56,6 +57,24 @@ router.patch("/settings/drive", async (req: AuthenticatedRequest, res) => {
     .single<{ drive_folder_url: string | null }>();
   if (error) throw error;
   res.json({ driveFolderUrl: data.drive_folder_url ?? null });
+});
+
+router.get("/settings/drive/status", async (req: AuthenticatedRequest, res) => {
+  if (!requireAdmin(req, res)) return;
+  res.json(await getDriveStatus());
+});
+
+router.post("/settings/drive/sync", async (req: AuthenticatedRequest, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const result = await syncDrivePhotos();
+    res.json({ ...result, status: "success" });
+  } catch (error) {
+    const message = error instanceof Error
+      ? error.message
+      : "Não foi possível sincronizar as fotos com o Google Drive.";
+    res.status(503).json({ status: "error", error: message });
+  }
 });
 
 export default router;
