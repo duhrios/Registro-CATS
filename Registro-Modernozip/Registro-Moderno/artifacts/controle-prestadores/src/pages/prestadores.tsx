@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'wouter';
 import { useListProviders } from '@workspace/api-client-react';
 import { ProviderAvatar } from '@/components/provider-avatar';
+import { getUserFacingError } from '@/lib/user-facing-error';
 import { useSupabase } from '@/lib/supabase-context';
 
 export default function Prestadores() {
@@ -49,13 +50,15 @@ export default function Prestadores() {
       const failed = responses.find((response) => !response.ok);
       if (failed) {
         const payload = await failed.json() as { error?: string };
-        throw new Error(payload.error ?? 'Não foi possível excluir os prestadores.');
+         const apiError = new Error(payload.error ?? 'Não foi possível excluir os prestadores.');
+         Object.assign(apiError, { status: failed.status, data: payload });
+         throw apiError;
       }
       setSelectedIds((current) => current.filter((id) => !ids.includes(id)));
       setDeleteMessage(ids.length === 1 ? 'Prestador excluído.' : `${ids.length} prestadores excluídos.`);
       await query.refetch();
     } catch (requestError) {
-      setDeleteError(requestError instanceof Error ? requestError.message : 'Não foi possível excluir os prestadores.');
+       setDeleteError(getUserFacingError(requestError, 'Não foi possível excluir os prestadores. Tente novamente.'));
     } finally {
       setDeletePending(null);
     }

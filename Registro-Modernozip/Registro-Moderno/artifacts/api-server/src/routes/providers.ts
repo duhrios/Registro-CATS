@@ -17,6 +17,7 @@ import {
   UpdateProviderParams,
   UpdateProviderResponse,
 } from "@workspace/api-zod";
+import { persistPhoto } from "../lib/photoStorage";
 
 type ProviderRow = {
   id: number;
@@ -148,6 +149,7 @@ router.post("/providers", async (req: AuthenticatedRequest, res) => {
     res.status(409).json({ error: "Este RG já está cadastrado." });
     return;
   }
+  const photoData = await persistPhoto(parsed.data.photoData, staffId);
   const { data: provider, error } = await supabase
     .from("providers")
     .insert({
@@ -155,7 +157,7 @@ router.post("/providers", async (req: AuthenticatedRequest, res) => {
       rg: parsed.data.rg.trim(),
       company: parsed.data.company.trim(),
       default_service: parsed.data.defaultService.trim(),
-      photo_data: parsed.data.photoData ?? null,
+      photo_data: photoData,
     })
     .select("*")
     .single<ProviderRow>();
@@ -193,7 +195,9 @@ router.patch("/providers/:id", async (req: AuthenticatedRequest, res) => {
     ...(body.data.defaultService !== undefined
       ? { default_service: body.data.defaultService.trim() }
       : {}),
-    ...(body.data.photoData !== undefined ? { photo_data: body.data.photoData } : {}),
+    ...(body.data.photoData !== undefined
+      ? { photo_data: await persistPhoto(body.data.photoData, req.staffId ?? "") }
+      : {}),
   };
   const { data: provider, error } = await supabase
     .from("providers")

@@ -5,6 +5,7 @@ import { useCreateVisit, useGetDashboardSummary, useListProviders, getGetDashboa
 import { useQueryClient } from '@tanstack/react-query';
 import { ProviderAvatar } from '@/components/provider-avatar';
 import { formatTime } from '@/lib/format';
+import { getUserFacingError } from '@/lib/user-facing-error';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabase } from '@/lib/supabase-context';
 
@@ -26,7 +27,7 @@ export default function Dashboard() {
       toast({ title: 'Informe o serviço', description: 'Descreva o serviço realizado hoje antes de registrar a entrada.' });
       return;
     }
-    createVisit.mutate({ data: { providerId: selected, service: service.trim() } }, { onSuccess: () => { toast({ title: 'Entrada registrada', description: 'O horário foi salvo no momento em que a entrada foi confirmada.' }); setSelected(null); setSearch(''); setService(''); queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); queryClient.invalidateQueries({ queryKey: getListProvidersQueryKey() }); queryClient.invalidateQueries({ queryKey: getListVisitsQueryKey() }); }, onError: () => { toast({ title: 'Não foi possível registrar', description: 'Confira a conexão com o servidor e tente novamente.', variant: 'destructive' }); } });
+     createVisit.mutate({ data: { providerId: selected, service: service.trim() } }, { onSuccess: () => { toast({ title: 'Entrada registrada', description: 'O horário foi salvo no momento em que a entrada foi confirmada.' }); setSelected(null); setSearch(''); setService(''); void queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); void queryClient.invalidateQueries({ queryKey: getListProvidersQueryKey() }); void queryClient.invalidateQueries({ queryKey: getListVisitsQueryKey() }); }, onError: (error) => { toast({ title: 'Não foi possível registrar a entrada', description: getUserFacingError(error, 'Confira a conexão com o servidor e tente novamente.'), variant: 'destructive' }); } });
   }
   return <div className="space-y-8">
     <section className="rise-in flex flex-col justify-between gap-5 sm:flex-row sm:items-end">

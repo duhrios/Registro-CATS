@@ -5,6 +5,7 @@ import { useListVisits, useUpdateVisit, getGetDashboardSummaryQueryKey, getListV
 import { useQueryClient } from '@tanstack/react-query';
 import { ProviderAvatar } from '@/components/provider-avatar';
 import { formatDate, formatTime } from '@/lib/format';
+import { getUserFacingError } from '@/lib/user-facing-error';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Historico() {
@@ -18,7 +19,7 @@ export default function Historico() {
     const link = document.createElement('a'); link.href = url; link.download = `entradas-saidas-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url);
   }
   function registerExit(id: number) {
-    updateVisit.mutate({ id, data: { exitAt: new Date().toISOString() } }, { onSuccess: () => { toast({ title: 'Saída registrada', description: 'O prestador foi marcado como ausente.' }); queryClient.invalidateQueries({ queryKey: getListVisitsQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); } });
+     updateVisit.mutate({ id, data: { exitAt: new Date().toISOString() } }, { onSuccess: () => { toast({ title: 'Saída registrada', description: 'O prestador foi marcado como ausente.' }); void queryClient.invalidateQueries({ queryKey: getListVisitsQueryKey() }); void queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); }, onError: (error) => { toast({ title: 'Não foi possível registrar a saída', description: getUserFacingError(error), variant: 'destructive' }); } });
   }
   return <div className="space-y-7"><section className="rise-in flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.18em] text-primary"><Clock3 className="h-3.5 w-3.5" />Linha do tempo</div><h1 className="text-3xl font-bold tracking-[-.04em]">Entradas e saídas</h1><p className="mt-2 text-sm text-muted-foreground">Acompanhe o movimento da recepção em um só lugar.</p></div><div className="flex gap-2"><button type="button" onClick={downloadCsv} disabled={!visits.length} data-testid="button-download-visits" className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50"><Download className="h-4 w-4" />Baixar lista</button><button type="button" data-testid="button-history-filter" className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"><SlidersHorizontal className="h-4 w-4" />Filtros</button></div></section>
     <section className="rise-in delay-1 rounded-2xl border border-border bg-card p-4 sm:p-5"><div className="relative"><Search className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} data-testid="input-history-search" placeholder="Buscar por prestador, empresa ou serviço..." className="h-11 w-full rounded-xl border border-input bg-background pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" /></div></section>
