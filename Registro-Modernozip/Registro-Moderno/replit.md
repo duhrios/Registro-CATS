@@ -6,6 +6,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 
 - Frontend: `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run dev`
 - API real: `PORT=8080 pnpm --filter @workspace/api-server run dev`
+- Fresh import setup: `pnpm install --frozen-lockfile` from this directory
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm test` — tests for immediate visibility and persistence of user/provider registrations
 - `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run build` — production frontend build
@@ -15,6 +16,18 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - Required secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - Safe reference: `.env.example` contains names only; configure the actual values through Replit Secrets
 - Authentication: the application login uses a username and password; the API maps the username to an internal Supabase Auth account and validates bearer tokens. Administrators can require a first-login password change, disable accounts, and rotate passwords with old sessions revoked.
+
+## Import verification
+
+After installing the frozen lockfile, run the `Project` workflow from the repository
+root. It starts `Controle de Prestadores` on port 5000 and `API Server` on port
+8080. A successful setup has both workflows running, `curl
+http://127.0.0.1:8080/api/healthz` returning `{"status":"ok"}`, and the
+frontend showing the Portuguese team access screen in the preview.
+
+The API requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and
+`SUPABASE_SERVICE_ROLE_KEY` in Replit Secrets. If the database is new, apply
+`supabase/schema.sql` in the Supabase SQL Editor before creating accounts.
 
 ## Stack
 
