@@ -47,6 +47,27 @@ Replit e nunca devem ser copiados para o Git.
 - Após essa alteração, typecheck e build passaram novamente, os dois workflows
   foram reiniciados e o preview exibiu o texto institucional corrigido.
 
+## Melhorias sugeridas
+
+Prioridades registradas para futuras evoluções, sem alterar o escopo atual:
+
+1. Criar testes autenticados para confirmar que novos usuários e prestadores
+   aparecem imediatamente nas listas e continuam disponíveis após recarregar.
+2. Disponibilizar a busca também no celular, pelo menu inferior ou por uma tela
+   de busca aberta pelo ícone de lupa.
+3. Registrar histórico de alterações, identificando a ação, o usuário e o
+   horário para cadastros, edições e exclusões.
+4. Adicionar exportação e backup dos prestadores e das visitas em CSV ou Excel.
+5. Melhorar o controle de senha com troca obrigatória no primeiro acesso,
+   desativação de usuários e encerramento de sessões antigas.
+6. Completar a edição de prestadores, incluindo troca/remoção de foto,
+   observações e informações operacionais adicionais.
+7. Avaliar integração real com Google Drive para envio organizado das fotos;
+   atualmente o sistema armazena apenas o link da pasta.
+8. Acrescentar filtros, relatórios de visitas, paginação para bases maiores,
+   aviso de indisponibilidade da API e revisão do aviso de múltiplas sessões
+   do Supabase no navegador.
+
 ## Execução no Replit
 
 - Frontend: `Controle de Prestadores`
