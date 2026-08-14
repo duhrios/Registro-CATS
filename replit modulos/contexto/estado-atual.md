@@ -20,6 +20,25 @@ Replit e nunca devem ser copiados para o Git.
   usuário.
 - Typecheck e build completo passaram usando as variáveis de execução
   `PORT=5000` e `BASE_PATH=/`.
+- O cadastro de usuário agora adiciona ou atualiza imediatamente o perfil
+  retornado pelo `POST /api/auth/users` na lista "Usuários cadastrados",
+  mantendo também os campos locais de edição.
+- O cadastro de prestador já invalida as consultas de diretório e dashboard
+  após o `POST /api/providers` responder 201; não foi identificado o mesmo
+  defeito de atualização local nesse fluxo.
+
+## Validação desta continuidade
+
+- Dependências restauradas com `pnpm install --frozen-lockfile` na raiz do
+  monorepo.
+- `pnpm run typecheck` passou para bibliotecas, API, frontend, sandbox e
+  scripts.
+- Build do frontend e da API passou; o aviso de sourcemap do tooltip e os
+  avisos de tamanho do bundle não impedem a execução.
+- Frontend e API estão configurados e em execução nas portas 5000 e 8080.
+- `GET /api/healthz` respondeu `{"status":"ok"}`.
+- A validação de criação/listagem autenticada ainda requer entrar com um dos
+  usuários existentes no preview; não registrar senhas ou tokens neste arquivo.
 
 ## Execução no Replit
 
