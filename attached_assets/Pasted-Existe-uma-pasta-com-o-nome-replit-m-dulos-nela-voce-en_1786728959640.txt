@@ -1,0 +1,45 @@
+Existe uma pasta com o nome replit módulos nela voce encontrará o que é necessário para poupar energia já no começo, salve tudo que voce fizer na pasta tambem
+
+Testes automáticos dos cadastros
+Mais importante no momento. Criar testes que confirmem que:
+•	usuário criado aparece imediatamente em Usuários cadastrados;
+•	prestador criado aparece no dashboard e na busca;
+•	os dados continuam disponíveis após atualizar a página.
+Essa é a melhor proteção contra o problema que aconteceu agora.
+2. Busca também no celular
+Atualmente o campo do cabeçalho aparece apenas em telas maiores. No celular, seria melhor manter uma busca acessível no menu inferior ou abrir um campo ao tocar no ícone de lupa.
+3. Histórico de alterações
+Registrar:
+•	quem criou, editou ou excluiu um usuário;
+•	quem cadastrou ou alterou um prestador;
+•	data e horário da alteração.
+Isso ajuda bastante em uma recepção com várias pessoas usando o sistema.
+4. Exportação e backup
+Adicionar exportação dos prestadores e visitas para CSV ou Excel, além de uma opção de backup. Assim os dados não ficam dependentes apenas do sistema.
+5. Controle de senha
+Para novos usuários, permitir:
+•	obrigar a troca da senha no primeiro acesso;
+•	bloquear ou desativar usuários temporariamente;
+•	informar quando a senha foi alterada;
+•	encerrar sessões antigas após troca de senha.
+6. Melhorias no cadastro de prestador
+Eu acrescentaria:
+•	edição completa dos dados do prestador;
+•	troca ou remoção da foto;
+•	confirmação antes de excluir;
+•	alerta visual quando o RG já estiver cadastrado;
+•	opção de adicionar observações, setor responsável ou validade do serviço.
+7. Integração real com o Google Drive
+Hoje o sistema salva apenas o link da pasta. O próximo passo seria enviar automaticamente as fotos para uma pasta organizada por prestador ou por ano/mês.
+8. Melhorias de operação
+Também vale considerar:
+•	filtros por empresa, serviço e período;
+•	paginação quando houver muitos prestadores;
+•	impressão ou geração de relatório de visitas;
+•	modo escuro;
+•	aviso quando a conexão com a API cair;
+•	correção do aviso técnico de múltiplas sessões do Supabase no navegador.
+Se eu fosse escolher apenas três próximas melhorias, faria nesta ordem:
+1.	testes automáticos dos cadastros;
+2.	histórico de alterações;
+3.	exportação/backup dos dados.
