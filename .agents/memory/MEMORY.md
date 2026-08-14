@@ -1,2 +1,3 @@
 - [Imported monorepo workflows](imported-monorepo-workflows.md) — preserve the root preview/API workflows when artifact import adds duplicate service ports.
 - [Imported workspace setup](imported-workspace-setup.md) — install the frozen lockfile before diagnosing services; Vite builds may require explicit runtime variables.
+- [Supabase client isolation](supabase-client-isolation.md) — never reuse a session-mutating auth client for service-role profile queries under RLS.

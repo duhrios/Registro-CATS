@@ -8,6 +8,7 @@ function requiredEnvironmentValue(name: string) {
 
 const url = requiredEnvironmentValue("SUPABASE_URL").replace(/\/+$/, "");
 const serviceRoleKey = requiredEnvironmentValue("SUPABASE_SERVICE_ROLE_KEY");
+const anonKey = requiredEnvironmentValue("SUPABASE_ANON_KEY");
 
 if (!/^https?:\/\//i.test(url)) {
   throw new Error(
@@ -29,7 +30,7 @@ class DisabledWebSocket {
   removeEventListener() {}
 }
 
-export const supabase = createClient(url, serviceRoleKey, {
+const clientOptions = {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
@@ -37,9 +38,18 @@ export const supabase = createClient(url, serviceRoleKey, {
   realtime: {
     transport: DisabledWebSocket as never,
   },
-});
+};
+
+// Keep the service-role client isolated from user sessions. Auth calls such as
+// signInWithPassword mutate a Supabase client's session state; sharing that
+// client with RLS-bypassing profile queries can make an admin profile appear
+// missing immediately after login.
+export const supabase = createClient(url, serviceRoleKey, clientOptions);
+
+export function createAuthClient() {
+  return createClient(url, anonKey, clientOptions);
+}
 
 export function publicSupabaseConfig() {
-  const anonKey = requiredEnvironmentValue("SUPABASE_ANON_KEY");
   return { url, anonKey };
 }

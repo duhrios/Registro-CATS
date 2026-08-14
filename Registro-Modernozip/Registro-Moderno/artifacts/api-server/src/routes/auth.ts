@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { supabase } from "../lib/supabase";
+import { createAuthClient, supabase } from "../lib/supabase";
 import type { AuthenticatedRequest } from "../middlewares/supabaseAuthMiddleware";
 
 const router: IRouter = Router();
@@ -151,7 +151,8 @@ router.post("/auth/login", async (req: Request, res: Response) => {
       return;
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const authClient = createAuthClient();
+    const { data, error } = await authClient.auth.signInWithPassword({
       email: internalEmail(username),
       password,
     });
@@ -192,7 +193,8 @@ router.post("/auth/bootstrap", async (req: Request, res: Response) => {
     }
 
     const { profile } = await createAuthUser(username, fullName, password, "admin");
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const authClient = createAuthClient();
+    const { data, error } = await authClient.auth.signInWithPassword({
       email: internalEmail(username),
       password,
     });
