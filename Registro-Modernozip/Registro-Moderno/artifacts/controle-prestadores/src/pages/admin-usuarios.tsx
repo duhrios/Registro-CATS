@@ -337,13 +337,13 @@ export default function AdminUsuarios() {
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">@{user.username}</p>
                   </div>
-                   <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[620px] lg:grid-cols-[minmax(180px,1fr)_180px_minmax(180px,1fr)_auto_auto]">
+                    <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(180px,1fr)_180px_minmax(200px,1fr)_auto_auto]">
                      <input aria-label={`Nome de ${user.username}`} type="text" minLength={2} value={editFor(user).fullName} onChange={(event) => updateUserEdit(user.user_id, { fullName: event.target.value })} placeholder="Nome completo" className="h-10 min-w-0 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" />
                      <select aria-label={`Perfil de ${user.username}`} value={editFor(user).role} onChange={(event) => updateUserEdit(user.user_id, { role: event.target.value as Profile['role'] })} disabled={user.user_id === profile.user_id} className="h-10 min-w-0 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-60">
                        <option value="user">Comum</option>
                        <option value="admin">Administrador</option>
                      </select>
-                    <div className="relative min-w-0 sm:w-56">
+                     <div className="relative min-w-0">
                       <KeyRound className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                        <input aria-label={`Nova senha de ${user.username}`} type="password" minLength={6} value={editFor(user).password} onChange={(event) => updateUserEdit(user.user_id, { password: event.target.value })} placeholder="Nova senha (mín. 6)" className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" />
                     </div>
@@ -364,15 +364,15 @@ export default function AdminUsuarios() {
       <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
         <div className="flex items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Link2 className="h-5 w-5" /></div>
-          <div><h2 className="text-lg font-bold tracking-tight">Pasta de fotos online</h2><p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Cole o link da pasta do Google Drive onde as fotos dos prestadores serão organizadas. A integração usará o nome do prestador no arquivo, por exemplo: Carlos Eduardo Souza.jpg.</p></div>
+          <div><h2 className="text-lg font-bold tracking-tight">Pasta de fotos online</h2><p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Cole o link da pasta do Google Drive que a equipe usará para organizar as fotos dos prestadores. Neste momento o sistema apenas guarda o link de acesso; o envio automático de arquivos ainda depende da conexão oficial com o Google Drive.</p></div>
         </div>
         <form onSubmit={saveDriveFolder} className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <input type="url" value={driveFolderUrl} onChange={(event) => setDriveFolderUrl(event.target.value)} disabled={driveLoading} placeholder="https://drive.google.com/drive/folders/..." className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-60" />
+          <input type="url" required={false} pattern="https://(www\.)?drive\.google\.com/drive(/[u]/[0-9]+)?/folders/.+" value={driveFolderUrl} onChange={(event) => setDriveFolderUrl(event.target.value)} disabled={driveLoading} placeholder="https://drive.google.com/drive/folders/..." className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-60" />
           <button type="submit" disabled={driveLoading || drivePending} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{drivePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar link</button>
         </form>
         {driveError && <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{driveError}</p>}
         {driveMessage && <p className="mt-3 flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{driveMessage}</p>}
-        <p className="mt-3 text-[11px] text-muted-foreground">O link fica disponível para a equipe depois que a integração do Google Drive for conectada ao projeto. Apenas o administrador pode alterá-lo.</p>
+        <p className="mt-3 text-[11px] text-muted-foreground">Apenas o administrador pode alterar este link. Garanta que a pasta esteja compartilhada com as pessoas que precisam acessá-la.</p>
       </section>
     </div>
   );

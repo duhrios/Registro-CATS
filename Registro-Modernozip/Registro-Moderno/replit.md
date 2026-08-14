@@ -6,16 +6,13 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 
 - Frontend: `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run dev`
 - API real: `PORT=8080 pnpm --filter @workspace/api-server run dev`
-- API local de demonstração: `PORT=8080 MOCK_SUPABASE=true pnpm --filter @workspace/api-server run dev`
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run test:mock-load` — reproducible 1,000-user demo API smoke/load test with cleanup
 - `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run build` — production frontend build
 - `pnpm --filter @workspace/api-server run build` — production API bundle
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - Database: execute `supabase/schema.sql` once in the Supabase SQL Editor; this creates the staff profile table and access roles
 - Required secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - Authentication: the application login uses a username and password; the API maps the username to an internal Supabase Auth account and validates bearer tokens
-- Local demo mode: set `MOCK_SUPABASE=true` only for the Replit preview; it uses in-memory fictional users and provider/visit records, with `admin` / `admin123` as the demo login. Disable it and configure Supabase before using real data.
 
 ## Stack
 
@@ -54,6 +51,7 @@ Interface copy is in Brazilian Portuguese.
 - Vite requires both `PORT` and `BASE_PATH`.
 - The API workflow uses port 8080 and must run alongside the frontend for data requests.
 - Never commit Supabase keys; configure them through the environment's secret store.
+- Google Drive: create a folder, configure its sharing permission, copy its browser URL (`https://drive.google.com/drive/folders/...`) and paste it in **Administração da recepção → Pasta de fotos online**. The application currently stores this official folder link; automatic photo upload requires a future Google Drive OAuth integration.
 
 ## Pointers
 

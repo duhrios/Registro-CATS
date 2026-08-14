@@ -79,6 +79,28 @@ PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run dev
 O frontend usa as rotas relativas `/api` e encaminha as requisições para a API
 na porta `8080` durante o desenvolvimento.
 
+## Configurar a pasta do Google Drive
+
+O cadastro atual guarda o link oficial da pasta para que a equipe saiba onde
+organizar as fotos. Ele ainda não envia arquivos automaticamente para o Drive.
+
+1. Abra o [Google Drive](https://drive.google.com) com a conta da escola.
+2. Crie uma pasta exclusiva para as fotos dos prestadores, por exemplo
+   `Fotos de prestadores`.
+3. Abra **Compartilhar** e defina quem poderá acessar a pasta. Para uma pasta
+   interna, prefira adicionar os e-mails da equipe em vez de usar “qualquer
+   pessoa com o link”.
+4. Copie o endereço da pasta. Ele deve começar com
+   `https://drive.google.com/drive/folders/`.
+5. Entre no sistema com uma conta administradora e abra
+   **Administração da recepção → Pasta de fotos online**.
+6. Cole o endereço e clique em **Salvar link**. Somente administradores podem
+   alterar essa configuração.
+
+O link não deve conter senha, chave ou token. A conexão para upload automático
+de fotos exigirá uma integração OAuth oficial do Google Drive, que não está
+configurada neste projeto.
+
 ## Verificações
 
 ```bash
@@ -89,15 +111,11 @@ pnpm --filter @workspace/api-server run build
 
 ## Estado do projeto
 
-A base do projeto já está preparada para Supabase, incluindo autenticação,
+A base do projeto usa exclusivamente Supabase real, incluindo autenticação,
 rotas protegidas, schema SQL e proxy entre frontend e API. O primeiro acesso
 cria o único administrador; os usuários seguintes são criados por ele com
 permissões padrão da recepção. A identidade visual global foi ajustada para a
 paleta da Educação Adventista.
-
-Nesta atualização, os comandos de execução não foram iniciados no ambiente de
-desenvolvimento; as verificações acima ficam disponíveis para execução local ou
-em CI.
 
 ## Segurança
 

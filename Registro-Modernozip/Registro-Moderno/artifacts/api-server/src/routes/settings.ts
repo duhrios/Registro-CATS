@@ -12,6 +12,20 @@ function requireAdmin(req: AuthenticatedRequest, res: Response) {
   return true;
 }
 
+function isGoogleDriveFolderUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    return (
+      url.protocol === "https:" &&
+      (hostname === "drive.google.com" || hostname === "www.drive.google.com") &&
+      /^\/drive(?:\/u\/\d+)?\/folders\/[^/]+/.test(url.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 router.get("/settings/drive", async (req: AuthenticatedRequest, res) => {
   if (!requireAdmin(req, res)) return;
   const { data, error } = await supabase
@@ -26,11 +40,15 @@ router.get("/settings/drive", async (req: AuthenticatedRequest, res) => {
 router.patch("/settings/drive", async (req: AuthenticatedRequest, res) => {
   if (!requireAdmin(req, res)) return;
   const value = req.body?.driveFolderUrl;
-  if (value !== null && value !== "" && (typeof value !== "string" || value.length > 2048 || !/^https?:\/\//i.test(value))) {
-    res.status(400).json({ error: "Cole um link online válido para a pasta de fotos." });
+  if (
+    value !== null &&
+    value !== "" &&
+    (typeof value !== "string" || value.length > 2048 || !isGoogleDriveFolderUrl(value.trim()))
+  ) {
+    res.status(400).json({ error: "Cole um link https://drive.google.com/drive/folders/... válido para uma pasta do Google Drive." });
     return;
   }
-  const driveFolderUrl = value === "" ? null : value;
+  const driveFolderUrl = value === "" || value === null ? null : value.trim();
   const { data, error } = await supabase
     .from("school_settings")
     .upsert({ id: true, drive_folder_url: driveFolderUrl, updated_at: new Date().toISOString() })
