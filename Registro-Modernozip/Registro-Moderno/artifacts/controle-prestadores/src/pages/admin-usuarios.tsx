@@ -122,12 +122,27 @@ export default function AdminUsuarios() {
         },
         body: JSON.stringify({ username, fullName, password, role }),
       });
-      const payload = await response.json();
+       const payload = await response.json() as { profile?: Profile; error?: string };
       if (!response.ok) {
         setError(payload.error ?? 'Não foi possível criar o integrante.');
         return;
       }
-       setMessage(`O usuário ${username} foi criado para a recepção e já pode entrar.`);
+       if (payload.profile) {
+         setUsers((current) => (
+           current.some((candidate) => candidate.user_id === payload.profile!.user_id)
+             ? current.map((candidate) => candidate.user_id === payload.profile!.user_id ? payload.profile! : candidate)
+             : [...current, payload.profile!]
+         ));
+         setUserEdits((current) => ({
+           ...current,
+           [payload.profile!.user_id]: {
+             fullName: payload.profile!.full_name,
+             role: payload.profile!.role,
+             password: '',
+           },
+         }));
+       }
+       setUsersMessage(`O usuário ${username} foi criado para a recepção e já pode entrar.`);
       setUsername('');
       setFullName('');
       setPassword('');
