@@ -18,6 +18,7 @@ import {
   UpdateProviderResponse,
 } from "@workspace/api-zod";
 import { persistPhoto } from "../lib/photoStorage";
+import { writeAuditLog } from "../lib/audit";
 
 type ProviderRow = {
   id: number;
@@ -26,6 +27,9 @@ type ProviderRow = {
   company: string;
   default_service: string;
   photo_data: string | null;
+  notes: string | null;
+  responsible_department: string | null;
+  service_valid_until: string | null;
   created_at: string;
   last_visit_at: string | null;
 };
@@ -56,6 +60,9 @@ function providerResponse(provider: ProviderRow, visitCount: number) {
     company: provider.company,
     defaultService: provider.default_service,
     photoData: provider.photo_data,
+    notes: provider.notes,
+    responsibleDepartment: provider.responsible_department,
+    serviceValidUntil: provider.service_valid_until,
     createdAt: provider.created_at,
     lastVisitAt: provider.last_visit_at,
     visitCount,
@@ -158,10 +165,20 @@ router.post("/providers", async (req: AuthenticatedRequest, res) => {
       company: parsed.data.company.trim(),
       default_service: parsed.data.defaultService.trim(),
       photo_data: photoData,
+      notes: parsed.data.notes?.trim() || null,
+      responsible_department: parsed.data.responsibleDepartment?.trim() || null,
+      service_valid_until: parsed.data.serviceValidUntil || null,
     })
     .select("*")
     .single<ProviderRow>();
   if (error) throw error;
+  await writeAuditLog(req, {
+    action: "created",
+    entityType: "provider",
+    entityId: provider.id,
+    entityLabel: provider.name,
+    details: { company: provider.company, rg: provider.rg },
+  });
   res.status(201).json(CreateProviderResponse.parse(providerResponse(provider, 0)));
 });
 
@@ -188,6 +205,19 @@ router.patch("/providers/:id", async (req: AuthenticatedRequest, res) => {
     res.status(400).json({ error: "Dados inválidos para atualização." });
     return;
   }
+  if (body.data.rg !== undefined) {
+    const { data: duplicate, error: duplicateError } = await supabase
+      .from("providers")
+      .select("id")
+      .eq("rg", body.data.rg.trim())
+      .neq("id", params.data.id)
+      .maybeSingle();
+    if (duplicateError) throw duplicateError;
+    if (duplicate) {
+      res.status(409).json({ error: "Este RG já está cadastrado." });
+      return;
+    }
+  }
   const values = {
     ...(body.data.name !== undefined ? { name: body.data.name.trim() } : {}),
     ...(body.data.rg !== undefined ? { rg: body.data.rg.trim() } : {}),
@@ -197,6 +227,13 @@ router.patch("/providers/:id", async (req: AuthenticatedRequest, res) => {
       : {}),
     ...(body.data.photoData !== undefined
       ? { photo_data: await persistPhoto(body.data.photoData, req.staffId ?? "") }
+      : {}),
+    ...(body.data.notes !== undefined ? { notes: body.data.notes?.trim() || null } : {}),
+    ...(body.data.responsibleDepartment !== undefined
+      ? { responsible_department: body.data.responsibleDepartment?.trim() || null }
+      : {}),
+    ...(body.data.serviceValidUntil !== undefined
+      ? { service_valid_until: body.data.serviceValidUntil || null }
       : {}),
   };
   const { data: provider, error } = await supabase
@@ -210,6 +247,13 @@ router.patch("/providers/:id", async (req: AuthenticatedRequest, res) => {
     res.status(404).json({ error: "Prestador não encontrado." });
     return;
   }
+  await writeAuditLog(req, {
+    action: "updated",
+    entityType: "provider",
+    entityId: provider.id,
+    entityLabel: provider.name,
+    details: { fields: Object.keys(values) },
+  });
   res.json(UpdateProviderResponse.parse(providerResponse(provider, await countVisits(provider.id))));
 });
 
@@ -241,6 +285,7 @@ router.delete("/providers/:id", async (req: AuthenticatedRequest, res) => {
     .delete()
     .eq("id", parsed.data.id);
   if (error) throw error;
+  await writeAuditLog(req, { action: "deleted", entityType: "provider", entityId: parsed.data.id });
   res.json({ message: "Prestador excluído com sucesso." });
 });
 

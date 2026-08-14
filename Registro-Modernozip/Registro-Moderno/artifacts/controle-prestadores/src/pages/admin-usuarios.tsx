@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { CheckCircle2, KeyRound, Link2, Loader2, Save, ShieldCheck, Trash2, UserPlus, UsersRound } from 'lucide-react';
+import { CheckCircle2, Download, KeyRound, Link2, Loader2, Save, ShieldCheck, Trash2, UserPlus, UsersRound, History } from 'lucide-react';
 import { useSupabase } from '@/lib/supabase-context';
 
 type Profile = {
@@ -8,12 +8,17 @@ type Profile = {
   full_name: string;
   role: 'admin' | 'user';
   created_at?: string;
+  must_change_password: boolean;
+  is_active: boolean;
+  password_changed_at: string | null;
 };
 
 type UserEdit = {
   fullName: string;
   role: Profile['role'];
   password: string;
+  isActive: boolean;
+  mustChangePassword: boolean;
 };
 
 export default function AdminUsuarios() {
@@ -23,6 +28,7 @@ export default function AdminUsuarios() {
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<Profile['role']>('user');
+  const [mustChangePassword, setMustChangePassword] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -39,6 +45,7 @@ export default function AdminUsuarios() {
   const [deleteUserPending, setDeleteUserPending] = useState<string | null>(null);
   const [usersMessage, setUsersMessage] = useState('');
   const [usersError, setUsersError] = useState('');
+  const [auditLogs, setAuditLogs] = useState<Array<{ id: number; actor_username: string | null; action: string; entity_type: string; entity_label: string | null; created_at: string }>>([]);
 
   useEffect(() => {
     let active = true;
@@ -84,6 +91,19 @@ export default function AdminUsuarios() {
   useEffect(() => {
     if (!profile || profile.role !== 'admin') return;
     let active = true;
+    supabase.auth.getSession().then(({ data }) => fetch('/api/audit-log?limit=100', {
+      headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+    })).then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json() as { logs?: typeof auditLogs };
+      if (active) setAuditLogs(payload.logs ?? []);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [profile, supabase]);
+
+  useEffect(() => {
+    if (!profile || profile.role !== 'admin') return;
+    let active = true;
     setUsersLoading(true);
     supabase.auth.getSession().then(({ data }) => fetch('/api/auth/users', {
       headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
@@ -96,7 +116,7 @@ export default function AdminUsuarios() {
           setUsers(nextUsers);
           setUserEdits(Object.fromEntries(nextUsers.map((user) => [
             user.user_id,
-            { fullName: user.full_name, role: user.role, password: '' },
+             { fullName: user.full_name, role: user.role, password: '', isActive: user.is_active, mustChangePassword: user.must_change_password },
           ])));
         }
       })
@@ -120,7 +140,7 @@ export default function AdminUsuarios() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${data.session?.access_token ?? ''}`,
         },
-        body: JSON.stringify({ username, fullName, password, role }),
+        body: JSON.stringify({ username, fullName, password, role, mustChangePassword }),
       });
        const payload = await response.json() as { profile?: Profile; error?: string };
       if (!response.ok) {
@@ -139,6 +159,8 @@ export default function AdminUsuarios() {
              fullName: payload.profile!.full_name,
              role: payload.profile!.role,
              password: '',
+              isActive: payload.profile!.is_active,
+              mustChangePassword: payload.profile!.must_change_password,
            },
          }));
        }
@@ -147,6 +169,7 @@ export default function AdminUsuarios() {
       setFullName('');
       setPassword('');
       setRole('user');
+       setMustChangePassword(true);
     } catch {
       setError('Não foi possível conectar ao servidor. Tente novamente.');
     } finally {
@@ -184,7 +207,7 @@ export default function AdminUsuarios() {
   }
 
   function editFor(user: Profile) {
-    return userEdits[user.user_id] ?? { fullName: user.full_name, role: user.role, password: '' };
+    return userEdits[user.user_id] ?? { fullName: user.full_name, role: user.role, password: '', isActive: user.is_active, mustChangePassword: user.must_change_password };
   }
 
   function updateUserEdit(userId: string, patch: Partial<UserEdit>) {
@@ -220,6 +243,8 @@ export default function AdminUsuarios() {
         body: JSON.stringify({
           fullName: edit.fullName.trim(),
           role: edit.role,
+          isActive: edit.isActive,
+          mustChangePassword: edit.mustChangePassword,
           ...(edit.password ? { password: edit.password } : {}),
         }),
       });
@@ -228,7 +253,7 @@ export default function AdminUsuarios() {
       setUsers((current) => current.map((candidate) => candidate.user_id === user.user_id ? payload.profile! : candidate));
       setUserEdits((current) => ({
         ...current,
-        [user.user_id]: { fullName: payload.profile!.full_name, role: payload.profile!.role, password: '' },
+        [user.user_id]: { fullName: payload.profile!.full_name, role: payload.profile!.role, password: '', isActive: payload.profile!.is_active, mustChangePassword: payload.profile!.must_change_password },
       }));
       if (user.user_id === profile?.user_id) setProfile(payload.profile);
       setUsersMessage(`${payload.profile.full_name} foi atualizado.`);
@@ -317,6 +342,10 @@ export default function AdminUsuarios() {
                  <option value="admin">Administrador — gerencia usuários</option>
                </select>
              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={mustChangePassword} onChange={(event) => setMustChangePassword(event.target.checked)} className="h-4 w-4 accent-primary" />
+                Obrigar troca da senha no primeiro acesso
+              </label>
           </div>
           {error && <p className="mt-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
           {message && <p className="mt-4 flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{message}</p>}
@@ -352,7 +381,7 @@ export default function AdminUsuarios() {
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">@{user.username}</p>
                   </div>
-                    <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(180px,1fr)_180px_minmax(200px,1fr)_auto_auto]">
+                     <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(180px,1fr)_180px_minmax(200px,1fr)_auto_auto]">
                      <input aria-label={`Nome de ${user.username}`} type="text" minLength={2} value={editFor(user).fullName} onChange={(event) => updateUserEdit(user.user_id, { fullName: event.target.value })} placeholder="Nome completo" className="h-10 min-w-0 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" />
                      <select aria-label={`Perfil de ${user.username}`} value={editFor(user).role} onChange={(event) => updateUserEdit(user.user_id, { role: event.target.value as Profile['role'] })} disabled={user.user_id === profile.user_id} className="h-10 min-w-0 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-60">
                        <option value="user">Comum</option>
@@ -362,6 +391,14 @@ export default function AdminUsuarios() {
                       <KeyRound className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                        <input aria-label={`Nova senha de ${user.username}`} type="password" minLength={6} value={editFor(user).password} onChange={(event) => updateUserEdit(user.user_id, { password: event.target.value })} placeholder="Nova senha (mín. 6)" className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" />
                     </div>
+                      <label className="flex h-10 items-center gap-2 rounded-lg border border-input bg-card px-3 text-[11px]">
+                        <input type="checkbox" checked={editFor(user).isActive} disabled={user.user_id === profile.user_id} onChange={(event) => updateUserEdit(user.user_id, { isActive: event.target.checked })} className="h-4 w-4 accent-primary" />
+                        Ativo
+                      </label>
+                      <label className="flex h-10 items-center gap-2 rounded-lg border border-input bg-card px-3 text-[11px]">
+                        <input type="checkbox" checked={editFor(user).mustChangePassword} onChange={(event) => updateUserEdit(user.user_id, { mustChangePassword: event.target.checked })} className="h-4 w-4 accent-primary" />
+                        Trocar senha
+                      </label>
                      <button type="button" onClick={() => updateUser(user)} disabled={userEditPending === user.user_id} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50">
                        {userEditPending === user.user_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Salvar
                     </button>
@@ -375,6 +412,26 @@ export default function AdminUsuarios() {
           </div>
         ) : <p className="mt-6 rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nenhum usuário cadastrado.</p>}
       </section>
+
+       <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
+         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+           <div className="flex items-start gap-3">
+             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Download className="h-5 w-5" /></div>
+             <div><h2 className="text-lg font-bold tracking-tight">Exportação e backup</h2><p className="mt-1 text-xs text-muted-foreground">Baixe uma cópia dos cadastros e visitas para guardar fora do sistema.</p></div>
+           </div>
+           <div className="flex flex-wrap gap-2">
+             <button type="button" onClick={() => window.location.assign('/api/exports/providers.csv')} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:border-primary/40"><Download className="h-3.5 w-3.5" />Prestadores CSV</button>
+             <button type="button" onClick={() => window.location.assign('/api/exports/backup.json')} className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"><Download className="h-3.5 w-3.5" />Backup completo</button>
+           </div>
+         </div>
+       </section>
+
+       <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
+         <div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><History className="h-5 w-5" /></div><div><h2 className="text-lg font-bold tracking-tight">Histórico de alterações</h2><p className="mt-1 text-xs text-muted-foreground">As ações recentes da equipe ficam registradas com data, hora e responsável.</p></div></div>
+         <div className="mt-5 space-y-2">
+           {auditLogs.length ? auditLogs.slice(0, 20).map((log) => <div key={log.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-background px-3 py-2 text-xs"><span className="font-semibold">{log.actor_username ?? 'sistema'}</span><span className="text-muted-foreground">{log.action} {log.entity_type}</span><span className="font-medium">{log.entity_label ?? log.entity_type}</span><time className="ml-auto text-muted-foreground">{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(log.created_at))}</time></div>) : <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Nenhuma alteração registrada ainda.</p>}
+         </div>
+       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
         <div className="flex items-start gap-3">

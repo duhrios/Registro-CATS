@@ -14,6 +14,9 @@ export interface Provider {
   defaultService: string;
   /** @nullable */
   photoData: string | null;
+  notes: string | null;
+  responsibleDepartment: string | null;
+  serviceValidUntil: string | null;
   createdAt: Date;
   /** @nullable */
   lastVisitAt: string | null;

@@ -190,10 +190,60 @@ function AuthScreen() {
   );
 }
 
+function ForcePasswordChangeScreen() {
+  const client = useSupabase();
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    if (password.length < 6 || password !== confirmation) {
+      setError(password.length < 6 ? 'A senha precisa ter pelo menos 6 caracteres.' : 'As senhas não conferem.');
+      return;
+    }
+    setPending(true);
+    try {
+      const { data } = await client.auth.getSession();
+      const response = await fetch('/api/auth/me/password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+        body: JSON.stringify({ password }),
+      });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'Não foi possível atualizar sua senha.');
+      setDone(true);
+      window.setTimeout(() => void client.auth.signOut(), 1100);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Não foi possível atualizar sua senha.');
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="grid min-h-[100dvh] place-items-center bg-background px-4">
+      <form onSubmit={submit} className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <h1 className="text-2xl font-bold">Crie uma nova senha</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Por segurança, a senha inicial precisa ser trocada antes de usar a recepção.</p>
+        <label className="mt-6 block text-sm font-medium">Nova senha<input required minLength={6} type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" /></label>
+        <label className="mt-4 block text-sm font-medium">Confirmar senha<input required minLength={6} type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" /></label>
+        {error && <p className="mt-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        {done && <p className="mt-4 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary">Senha atualizada. Redirecionando para o login…</p>}
+        <button type="submit" disabled={pending || done} className="mt-6 h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50">{pending ? 'Salvando…' : 'Atualizar senha'}</button>
+      </form>
+    </div>
+  );
+}
+
 function AccessGate() {
   const client = useSupabase();
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -203,6 +253,7 @@ function AccessGate() {
     const { data } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setIsAdmin(null);
+      setMustChangePassword(false);
     });
     return () => {
       active = false;
@@ -223,7 +274,7 @@ function AccessGate() {
       .then(async (response) => {
         const payload = (await response.json()) as {
           error?: string;
-          profile?: { role?: string };
+          profile?: { role?: string; must_change_password?: boolean };
         };
         if (response.status === 401) {
           await client.auth.signOut();
@@ -232,10 +283,16 @@ function AccessGate() {
         if (!response.ok) {
           throw new Error(payload.error ?? 'Não foi possível carregar as permissões.');
         }
-        if (active) setIsAdmin(payload.profile?.role === 'admin');
+        if (active) {
+          setIsAdmin(payload.profile?.role === 'admin');
+          setMustChangePassword(payload.profile?.must_change_password === true);
+        }
       })
       .catch(() => {
-        if (active) setIsAdmin(false);
+        if (active) {
+          setIsAdmin(false);
+          setMustChangePassword(false);
+        }
       });
 
     return () => {
@@ -245,6 +302,7 @@ function AccessGate() {
 
   if (!session) return <AuthScreen />;
   if (isAdmin === null) return <LoadingScreen message="Carregando permissões…" />;
+  if (mustChangePassword) return <ForcePasswordChangeScreen />;
 
   return <Router isAdmin={isAdmin} />;
 }

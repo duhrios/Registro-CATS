@@ -17,6 +17,9 @@ export interface Provider {
   defaultService: string;
   /** @nullable */
   photoData: string | null;
+  notes: string | null;
+  responsibleDepartment: string | null;
+  serviceValidUntil: string | null;
   createdAt: string;
   /** @nullable */
   lastVisitAt: string | null;
@@ -34,6 +37,9 @@ export interface ProviderInput {
   defaultService: string;
   /** @nullable */
   photoData?: string | null;
+  notes?: string;
+  responsibleDepartment?: string;
+  serviceValidUntil?: string | null;
 }
 
 export interface ProviderUpdate {
@@ -47,6 +53,9 @@ export interface ProviderUpdate {
   defaultService?: string;
   /** @nullable */
   photoData?: string | null;
+  notes?: string;
+  responsibleDepartment?: string;
+  serviceValidUntil?: string | null;
 }
 
 export interface Visit {

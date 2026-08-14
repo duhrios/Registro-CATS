@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { createAuthClient, supabase } from "../lib/supabase";
 import type { AuthenticatedRequest } from "../middlewares/supabaseAuthMiddleware";
+import { writeAuditLog } from "../lib/audit";
 
 const router: IRouter = Router();
 const INTERNAL_EMAIL_DOMAIN = "usuarios.portico.app";
@@ -11,6 +12,9 @@ type StaffProfile = {
   full_name: string;
   role: "admin" | "user";
   created_at: string;
+  must_change_password: boolean;
+  is_active: boolean;
+  password_changed_at: string | null;
 };
 
 function normalizeUsername(value: unknown) {
@@ -43,7 +47,7 @@ function credentialsFromBody(body: Request["body"]) {
 async function findProfile(username: string) {
   const { data, error } = await supabase
     .from("staff_profiles")
-    .select("user_id, username, full_name, role, created_at")
+    .select("user_id, username, full_name, role, created_at, must_change_password, is_active, password_changed_at")
     .eq("username", username)
     .maybeSingle<StaffProfile>();
 
@@ -56,6 +60,7 @@ async function createStaffProfile(
   username: string,
   fullName: string,
   role: StaffProfile["role"],
+  mustChangePassword = false,
 ) {
   const { data, error } = await supabase
     .from("staff_profiles")
@@ -65,6 +70,9 @@ async function createStaffProfile(
         username,
         full_name: fullName,
          role,
+         must_change_password: mustChangePassword,
+         is_active: true,
+         password_changed_at: mustChangePassword ? null : new Date().toISOString(),
       },
       { onConflict: "user_id" },
     )
@@ -80,6 +88,7 @@ async function createAuthUser(
   fullName: string,
   password: string,
   role: StaffProfile["role"],
+  mustChangePassword = false,
 ) {
   const { data, error } = await supabase.auth.admin.createUser({
     email: internalEmail(username),
@@ -97,7 +106,7 @@ async function createAuthUser(
   }
 
   try {
-    const profile = await createStaffProfile(data.user.id, username, fullName, role);
+    const profile = await createStaffProfile(data.user.id, username, fullName, role, mustChangePassword);
     return { user: data.user, profile };
   } catch (profileError) {
     await supabase.auth.admin.deleteUser(data.user.id);
@@ -192,7 +201,7 @@ router.post("/auth/bootstrap", async (req: Request, res: Response) => {
       return;
     }
 
-    const { profile } = await createAuthUser(username, fullName, password, "admin");
+    const { profile } = await createAuthUser(username, fullName, password, "admin", false);
     const authClient = createAuthClient();
     const { data, error } = await authClient.auth.signInWithPassword({
       email: internalEmail(username),
@@ -222,6 +231,7 @@ router.post("/auth/users", async (req: AuthenticatedRequest, res: Response) => {
 
   const { username, fullName, password } = credentialsFromBody(req.body);
   const role = req.body?.role === undefined ? "user" : req.body.role;
+  const mustChangePassword = req.body?.mustChangePassword === true;
   const validationError = validateCredentials(username, fullName, password);
   if (validationError) {
     res.status(400).json({ error: validationError });
@@ -239,7 +249,14 @@ router.post("/auth/users", async (req: AuthenticatedRequest, res: Response) => {
       return;
     }
 
-    const { user, profile } = await createAuthUser(username, fullName, password, role);
+    const { user, profile } = await createAuthUser(username, fullName, password, role, mustChangePassword);
+    await writeAuditLog(req, {
+      action: "created",
+      entityType: "user",
+      entityId: profile.user_id,
+      entityLabel: profile.full_name,
+      details: { username: profile.username, role: profile.role },
+    });
     res.status(201).json({
       user: { id: user.id },
       profile,
@@ -269,6 +286,8 @@ router.patch("/auth/users/:userId", async (req: AuthenticatedRequest, res: Respo
   const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : "";
   const password = req.body?.password;
   const role = req.body?.role;
+  const isActive = req.body?.isActive;
+  const mustChangePassword = req.body?.mustChangePassword;
   if (fullName.length < 2) {
     res.status(400).json({ error: "Informe um nome com pelo menos 2 caracteres." });
     return;
@@ -281,6 +300,14 @@ router.patch("/auth/users/:userId", async (req: AuthenticatedRequest, res: Respo
     res.status(400).json({ error: "Escolha um perfil válido: administrador ou comum." });
     return;
   }
+  if (isActive !== undefined && typeof isActive !== "boolean") {
+    res.status(400).json({ error: "O status do usuário é inválido." });
+    return;
+  }
+  if (mustChangePassword !== undefined && typeof mustChangePassword !== "boolean") {
+    res.status(400).json({ error: "A configuração de troca de senha é inválida." });
+    return;
+  }
   if (userId === req.staffId && role !== "admin") {
     res.status(400).json({ error: "Você não pode remover o perfil administrador da própria conta." });
     return;
@@ -289,7 +316,7 @@ router.patch("/auth/users/:userId", async (req: AuthenticatedRequest, res: Respo
   try {
     const { data: target, error: profileError } = await supabase
       .from("staff_profiles")
-      .select("user_id, username, full_name, role, created_at")
+      .select("user_id, username, full_name, role, created_at, must_change_password, is_active, password_changed_at")
       .eq("user_id", userId)
       .maybeSingle<StaffProfile>();
     if (profileError) throw profileError;
@@ -322,11 +349,27 @@ router.patch("/auth/users/:userId", async (req: AuthenticatedRequest, res: Respo
 
     const { data: updatedProfile, error: updateError } = await supabase
       .from("staff_profiles")
-      .update({ full_name: fullName, role })
+      .update({
+        full_name: fullName,
+        role,
+        ...(isActive !== undefined ? { is_active: isActive } : {}),
+        ...(mustChangePassword !== undefined ? { must_change_password: mustChangePassword } : {}),
+        ...(password ? { password_changed_at: new Date().toISOString() } : {}),
+      })
       .eq("user_id", userId)
-      .select("user_id, username, full_name, role, created_at")
+      .select("user_id, username, full_name, role, created_at, must_change_password, is_active, password_changed_at")
       .single<StaffProfile>();
     if (updateError) throw updateError;
+    if (password) {
+      await supabase.auth.admin.signOut(userId, "global");
+    }
+    await writeAuditLog(req, {
+      action: "updated",
+      entityType: "user",
+      entityId: updatedProfile.user_id,
+      entityLabel: updatedProfile.full_name,
+      details: { passwordChanged: Boolean(password), role, isActive },
+    });
     res.json({ profile: updatedProfile, message: "Usuário atualizado com sucesso." });
   } catch (error) {
     req.log?.error(error);
@@ -343,7 +386,7 @@ router.get("/auth/users", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { data, error } = await supabase
       .from("staff_profiles")
-      .select("user_id, username, full_name, role, created_at")
+      .select("user_id, username, full_name, role, created_at, must_change_password, is_active, password_changed_at")
       .order("created_at", { ascending: true });
     if (error) throw error;
     res.json({ users: data ?? [] });
@@ -380,10 +423,38 @@ router.patch("/auth/users/:userId/password", async (req: AuthenticatedRequest, r
 
     const { error } = await supabase.auth.admin.updateUserById(userId, { password });
     if (error) throw error;
+    await supabase
+      .from("staff_profiles")
+      .update({ must_change_password: false, password_changed_at: new Date().toISOString() })
+      .eq("user_id", userId);
+    await supabase.auth.admin.signOut(userId, "global");
+    await writeAuditLog(req, { action: "password_changed", entityType: "user", entityId: userId });
     res.json({ message: "Senha atualizada com sucesso." });
   } catch (error) {
     req.log?.error(error);
     res.status(500).json({ error: "Não foi possível atualizar a senha." });
+  }
+});
+
+router.patch("/auth/me/password", async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.staffId;
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!userId || !passwordIsValid(password)) {
+    res.status(400).json({ error: "A nova senha precisa ter pelo menos 6 caracteres." });
+    return;
+  }
+  try {
+    const { error } = await supabase.auth.admin.updateUserById(userId, { password });
+    if (error) throw error;
+    await supabase
+      .from("staff_profiles")
+      .update({ must_change_password: false, password_changed_at: new Date().toISOString() })
+      .eq("user_id", userId);
+    await writeAuditLog(req, { action: "password_changed", entityType: "user", entityId: userId });
+    res.json({ message: "Senha atualizada. Entre novamente para continuar." });
+  } catch (error) {
+    req.log?.error(error);
+    res.status(500).json({ error: "Não foi possível atualizar sua senha." });
   }
 });
 
@@ -417,6 +488,7 @@ router.delete("/auth/users/:userId", async (req: AuthenticatedRequest, res: Resp
 
     const { error } = await supabase.auth.admin.deleteUser(userId);
     if (error) throw error;
+    await writeAuditLog(req, { action: "deleted", entityType: "user", entityId: userId });
     res.json({ message: "Usuário excluído com sucesso." });
   } catch (error) {
     req.log?.error(error);

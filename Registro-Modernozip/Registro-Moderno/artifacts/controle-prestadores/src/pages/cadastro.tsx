@@ -16,6 +16,9 @@ type ProviderForm = {
   rg: string;
   company: string;
   service: string;
+  department: string;
+  validUntil: string;
+  notes: string;
 };
 
 const emptyForm: ProviderForm = {
@@ -23,6 +26,9 @@ const emptyForm: ProviderForm = {
   rg: '',
   company: '',
   service: '',
+  department: '',
+  validUntil: '',
+  notes: '',
 };
 
 function fieldError(form: ProviderForm, key: keyof ProviderForm) {
@@ -41,6 +47,7 @@ export default function Cadastro() {
   const [done, setDone] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [touched, setTouched] = useState<Partial<Record<keyof ProviderForm, boolean>>>({});
+  const [duplicateRg, setDuplicateRg] = useState('');
 
   const valid = Object.keys(emptyForm).every(
     (key) => !fieldError(form, key as keyof ProviderForm),
@@ -53,6 +60,21 @@ export default function Cadastro() {
     };
   }
 
+  async function checkRg() {
+    const rg = form.rg.trim();
+    if (rg.length < 3) {
+      setDuplicateRg('');
+      return;
+    }
+    try {
+      const response = await fetch(`/api/providers?limit=100&search=${encodeURIComponent(rg)}`);
+      const providers = await response.json() as Array<{ rg?: string }>;
+      setDuplicateRg(providers.some((provider) => provider.rg?.toLowerCase() === rg.toLowerCase()) ? 'Este RG já está cadastrado.' : '');
+    } catch {
+      setDuplicateRg('');
+    }
+  }
+
   function markTouched(key: keyof ProviderForm) {
     setTouched((current) => ({ ...current, [key]: true }));
   }
@@ -61,7 +83,7 @@ export default function Cadastro() {
     event.preventDefault();
     setTouched({ name: true, rg: true, company: true, service: true });
     setSubmitError('');
-    if (!valid) {
+    if (!valid || duplicateRg) {
       setSubmitError('Revise os campos destacados antes de salvar.');
       return;
     }
@@ -73,6 +95,9 @@ export default function Cadastro() {
           rg: form.rg.trim(),
           company: form.company.trim(),
           defaultService: form.service.trim(),
+          responsibleDepartment: form.department.trim() || undefined,
+          serviceValidUntil: form.validUntil || null,
+          notes: form.notes.trim() || undefined,
           photoData: photo,
         },
       },
@@ -168,7 +193,10 @@ export default function Cadastro() {
                   <input
                     value={form[key]}
                     onChange={update(key)}
-                    onBlur={() => markTouched(key)}
+                    onBlur={() => {
+                      markTouched(key);
+                      if (key === 'rg') void checkRg();
+                    }}
                     data-testid={`input-provider-${key}`}
                     placeholder={placeholder}
                     aria-invalid={Boolean(message)}
@@ -181,9 +209,22 @@ export default function Cadastro() {
                       {message}
                     </span>
                   )}
+                  {key === 'rg' && duplicateRg && <span className="mt-1.5 block text-xs text-destructive" role="alert">{duplicateRg}</span>}
                 </label>
               );
             })}
+            <label>
+              <span className="mb-2 block text-xs font-semibold">Setor responsável</span>
+              <input value={form.department} onChange={update('department')} placeholder="Ex.: Manutenção" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary" />
+            </label>
+            <label>
+              <span className="mb-2 block text-xs font-semibold">Validade do serviço</span>
+              <input type="date" value={form.validUntil} onChange={update('validUntil')} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary" />
+            </label>
+            <label className="sm:col-span-2">
+              <span className="mb-2 block text-xs font-semibold">Observações</span>
+              <textarea value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} rows={3} placeholder="Informações úteis para a recepção" className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+            </label>
           </div>
 
           <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-border pt-5 sm:flex-row sm:items-center">

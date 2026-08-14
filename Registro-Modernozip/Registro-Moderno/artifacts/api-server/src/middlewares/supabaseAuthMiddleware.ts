@@ -7,6 +7,9 @@ export type StaffProfile = {
   full_name: string;
   role: "admin" | "user";
   created_at: string;
+  must_change_password: boolean;
+  is_active: boolean;
+  password_changed_at: string | null;
 };
 
 export type AuthenticatedRequest = Request & {
@@ -52,12 +55,17 @@ export async function supabaseAuthMiddleware(
   req.staffId = data.user.id;
   const { data: profile, error: profileError } = await supabase
     .from("staff_profiles")
-    .select("user_id, username, full_name, role, created_at")
+    .select("user_id, username, full_name, role, created_at, must_change_password, is_active, password_changed_at")
     .eq("user_id", data.user.id)
     .maybeSingle<StaffProfile>();
 
   if (profileError) {
     res.status(500).json({ error: "O perfil de acesso ainda não está configurado. Aplique o schema do Supabase." });
+    return;
+  }
+
+  if (profile && !profile.is_active) {
+    res.status(403).json({ error: "Este usuário está desativado. Procure um administrador." });
     return;
   }
 

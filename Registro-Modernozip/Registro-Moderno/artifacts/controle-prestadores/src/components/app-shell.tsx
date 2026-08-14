@@ -1,4 +1,4 @@
-import { Bell, Clock3, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, UsersRound, UserPlus } from 'lucide-react';
+import { Bell, Clock3, LayoutDashboard, LogOut, Moon, Plus, Search, ShieldCheck, Sun, UsersRound, UserPlus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,12 @@ export function AppShell({ children, isAdmin }: { children: React.ReactNode; isA
   const [identity, setIdentity] = useState({ name: 'Equipe da recepção', username: 'Acesso administrativo' });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => window.localStorage.getItem('recepcao-theme') === 'dark');
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    window.localStorage.setItem('recepcao-theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
   const providerSearchParams = { limit: 8, search: globalSearch.trim() || undefined };
   const providerSearch = useListProviders(
     providerSearchParams,
@@ -81,7 +87,7 @@ export function AppShell({ children, isAdmin }: { children: React.ReactNode; isA
         <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-border/70 bg-background/90 px-5 backdrop-blur-md sm:px-8">
           <div className="flex items-center gap-3"><div className="h-2 w-2 rounded-full bg-primary" /><span className="font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">Colégio Adventista de Taboão da Serra</span></div>
           <div className="flex items-center gap-2 sm:gap-4">
-             <div className="relative hidden sm:block">
+              <div className="relative hidden sm:block">
                <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                <input
                  value={globalSearch}
@@ -120,6 +126,23 @@ export function AppShell({ children, isAdmin }: { children: React.ReactNode; isA
                          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
                            {initials(provider.name)}
                          </div>
+              <button
+                type="button"
+                aria-label="Buscar prestador no celular"
+                aria-expanded={mobileSearchOpen}
+                onClick={() => setMobileSearchOpen((open) => !open)}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-card text-muted-foreground sm:hidden"
+              >
+                {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+              </button>
+              <button
+                type="button"
+                aria-label={darkMode ? 'Usar modo claro' : 'Usar modo escuro'}
+                onClick={() => setDarkMode((value) => !value)}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-card text-muted-foreground"
+              >
+                {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
                          <span className="min-w-0">
                            <span className="block truncate text-xs font-semibold">{provider.name}</span>
                            <span className="block truncate text-[11px] text-muted-foreground">{provider.company}</span>
@@ -144,6 +167,39 @@ export function AppShell({ children, isAdmin }: { children: React.ReactNode; isA
         </header>
         <main className="mx-auto max-w-[1450px] px-5 py-7 sm:px-8 lg:px-10">{children}</main>
       </div>
+      {mobileSearchOpen && (
+        <div className="fixed inset-x-3 top-[78px] z-40 rounded-2xl border border-border bg-card p-3 shadow-2xl sm:hidden">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <input
+              autoFocus
+              value={globalSearch}
+              onChange={(event) => setGlobalSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setMobileSearchOpen(false);
+                if (event.key === 'Enter' && providerResults[0]) {
+                  setMobileSearchOpen(false);
+                  setGlobalSearch('');
+                  setLocation(`/prestadores/${providerResults[0].id}`);
+                }
+              }}
+              data-testid="input-mobile-search"
+              aria-label="Buscar prestador"
+              placeholder="Buscar nome, empresa ou RG"
+              className="h-11 w-full rounded-xl border border-input bg-background pl-10 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+            />
+          </div>
+          {globalSearch.trim() && (
+            <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-border bg-background p-1.5">
+              {providerSearch.isFetching ? <p className="px-3 py-4 text-center text-xs text-muted-foreground">Buscando…</p> : providerResults.length ? providerResults.map((provider) => (
+                <button key={provider.id} type="button" onClick={() => { setMobileSearchOpen(false); setGlobalSearch(''); setLocation(`/prestadores/${provider.id}`); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary">
+                  <span className="min-w-0"><span className="block truncate text-xs font-semibold">{provider.name}</span><span className="block truncate text-[11px] text-muted-foreground">{provider.company}</span></span>
+                </button>
+              )) : <p className="px-3 py-4 text-center text-xs text-muted-foreground">Nenhum prestador encontrado.</p>}
+            </div>
+          )}
+        </div>
+      )}
       <div className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-card/95 px-2 py-2 backdrop-blur-md md:hidden">
         {navItems.map(({ href, label, icon: Icon }) => <Link key={href} href={href} data-testid={`link-mobile-${href === '/' ? 'inicio' : href.slice(1)}`} className={cn('flex flex-1 flex-col items-center gap-1 py-1 text-[10px] font-medium text-muted-foreground', location === href && 'text-primary')}><Icon className="h-4 w-4" />{href === '/' ? 'Início' : href === '/historico' ? 'Histórico' : 'Pessoas'}</Link>)}
       </div>

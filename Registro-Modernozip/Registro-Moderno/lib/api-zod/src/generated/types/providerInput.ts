@@ -17,4 +17,7 @@ export interface ProviderInput {
   defaultService: string;
   /** @nullable */
   photoData?: string | null;
+  notes?: string;
+  responsibleDepartment?: string;
+  serviceValidUntil?: string | null;
 }

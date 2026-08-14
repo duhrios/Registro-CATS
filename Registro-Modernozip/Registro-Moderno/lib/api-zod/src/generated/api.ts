@@ -37,6 +37,9 @@ export const ListProvidersResponseItem = zod.object({
   "company": zod.string(),
   "defaultService": zod.string(),
   "photoData": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "responsibleDepartment": zod.string().nullable(),
+  "serviceValidUntil": zod.string().nullable(),
   "createdAt": zod.coerce.date(),
   "lastVisitAt": zod.string().nullable(),
   "visitCount": zod.number()
@@ -63,6 +66,9 @@ export const CreateProviderBody = zod.object({
   "company": zod.string().min(createProviderBodyCompanyMin),
   "defaultService": zod.string().min(createProviderBodyDefaultServiceMin),
   "photoData": zod.string().nullish()
+  ,"notes": zod.string().optional()
+  ,"responsibleDepartment": zod.string().optional()
+  ,"serviceValidUntil": zod.string().nullable().optional()
 })
 
 export const CreateProviderResponse = zod.object({
@@ -72,6 +78,9 @@ export const CreateProviderResponse = zod.object({
   "company": zod.string(),
   "defaultService": zod.string(),
   "photoData": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "responsibleDepartment": zod.string().nullable(),
+  "serviceValidUntil": zod.string().nullable(),
   "createdAt": zod.coerce.date(),
   "lastVisitAt": zod.string().nullable(),
   "visitCount": zod.number()
@@ -95,6 +104,9 @@ export const GetProviderResponse = zod.object({
   "company": zod.string(),
   "defaultService": zod.string(),
   "photoData": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "responsibleDepartment": zod.string().nullable(),
+  "serviceValidUntil": zod.string().nullable(),
   "createdAt": zod.coerce.date(),
   "lastVisitAt": zod.string().nullable(),
   "visitCount": zod.number()
@@ -127,6 +139,9 @@ export const UpdateProviderBody = zod.object({
   "company": zod.string().min(updateProviderBodyCompanyMin).optional(),
   "defaultService": zod.string().min(updateProviderBodyDefaultServiceMin).optional(),
   "photoData": zod.string().nullish()
+  ,"notes": zod.string().optional()
+  ,"responsibleDepartment": zod.string().optional()
+  ,"serviceValidUntil": zod.string().nullable().optional()
 })
 
 export const UpdateProviderResponse = zod.object({
@@ -136,6 +151,9 @@ export const UpdateProviderResponse = zod.object({
   "company": zod.string(),
   "defaultService": zod.string(),
   "photoData": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "responsibleDepartment": zod.string().nullable(),
+  "serviceValidUntil": zod.string().nullable(),
   "createdAt": zod.coerce.date(),
   "lastVisitAt": zod.string().nullable(),
   "visitCount": zod.number()
