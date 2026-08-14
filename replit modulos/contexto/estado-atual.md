@@ -39,6 +39,13 @@ Replit e nunca devem ser copiados para o Git.
 - `GET /api/healthz` respondeu `{"status":"ok"}`.
 - A validação de criação/listagem autenticada ainda requer entrar com um dos
   usuários existentes no preview; não registrar senhas ou tokens neste arquivo.
+- A identificação exibida no login, menu lateral e cabeçalho usa “Colégio
+  Adventista de Taboão da Serra”.
+- O antigo botão “Buscar registro”, que navegava para o diretório, foi trocado
+  por um campo de busca no cabeçalho. Ele consulta prestadores ao digitar,
+  mostra resultados compactos e abre diretamente os detalhes do selecionado.
+- Após essa alteração, typecheck e build passaram novamente, os dois workflows
+  foram reiniciados e o preview exibiu o texto institucional corrigido.
 
 ## Execução no Replit
 

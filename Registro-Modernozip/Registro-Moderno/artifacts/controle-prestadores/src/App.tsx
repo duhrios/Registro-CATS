@@ -109,7 +109,7 @@ function AuthScreen() {
             <span className="font-mono text-lg font-bold">P</span>
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[.18em] text-primary">
-            Recepção · Colégio Adventista
+             Recepção · Colégio Adventista de Taboão da Serra
           </p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight">
             {mode === 'sign-in' ? 'Acesso da equipe' : 'Primeiro acesso'}
