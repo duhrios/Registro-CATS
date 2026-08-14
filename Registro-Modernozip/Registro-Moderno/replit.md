@@ -7,13 +7,14 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - Frontend: `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run dev`
 - API real: `PORT=8080 pnpm --filter @workspace/api-server run dev`
 - `pnpm run typecheck` — full typecheck across all packages
+- `pnpm test` — tests for immediate visibility and persistence of user/provider registrations
 - `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run build` — production frontend build
 - `pnpm --filter @workspace/api-server run build` — production API bundle
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- Database: execute `supabase/schema.sql` once in the Supabase SQL Editor; this creates the staff profile table and access roles
+- Database: execute `supabase/schema.sql` once in the Supabase SQL Editor; this creates staff profiles, provider metadata, audit logs, and access roles
 - Required secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - Safe reference: `.env.example` contains names only; configure the actual values through Replit Secrets
-- Authentication: the application login uses a username and password; the API maps the username to an internal Supabase Auth account and validates bearer tokens
+- Authentication: the application login uses a username and password; the API maps the username to an internal Supabase Auth account and validates bearer tokens. Administrators can require a first-login password change, disable accounts, and rotate passwords with old sessions revoked.
 
 ## Stack
 
@@ -31,6 +32,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - `lib/api-spec` — OpenAPI source of truth
 - `lib/api-zod` and `lib/api-client-react` — generated validation and React Query hooks
 - `artifacts/controle-prestadores/src/index.css` — theme tokens and global styles
+- `tests/registration-flow.test.mjs` — registration visibility and refresh-persistence contract tests
 
 ## Architecture decisions
 
@@ -39,6 +41,8 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - The frontend uses relative `/api` routes so a reverse proxy can connect it to the API service.
 - The frontend retries `GET /api/config` during startup so a brief API workflow start-up race does not leave the login screen stuck on a configuration error.
 - Provider photos are persisted as validated image data in Supabase Postgres.
+- User/provider create, update, and delete operations write to `audit_logs`; administrators can review the recent activity and download provider CSV or a full JSON backup.
+- The provider directory has mobile search, dark mode, client-side pagination, RG duplicate warnings, and extended fields for department, validity, and notes.
 
 ## Product
 
@@ -54,6 +58,7 @@ Interface copy is in Brazilian Portuguese.
 - The API workflow uses port 8080 and must run alongside the frontend for data requests.
 - Never commit Supabase keys; configure them through the environment's secret store.
 - Google Drive: create a folder, configure its sharing permission, copy its browser URL (`https://drive.google.com/drive/folders/...`) and paste it in **Administração da recepção → Pasta de fotos online**. The application currently stores this official folder link; automatic photo upload requires a future Google Drive OAuth integration.
+- Supabase schema changes must be applied in the SQL Editor before using audit logs, extended provider fields, or password controls.
 
 ## Pointers
 
