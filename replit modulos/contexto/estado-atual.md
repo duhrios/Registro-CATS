@@ -49,3 +49,12 @@ Não registrar valores, URLs completas, tokens ou chaves neste arquivo.
   `PORT=5000 BASE_PATH=/ pnpm run build`.
 - A API pode exibir um aviso sobre Node 20 e Supabase; isso é aviso de
   compatibilidade, não impede a inicialização atual.
+
+## Reset de acesso
+
+- As contas de autenticação antigas foram removidas após confirmação do
+  proprietário.
+- Não há perfis restantes em `staff_profiles`.
+- `/api/auth/bootstrap/status` retorna `available: true`.
+- O primeiro cadastro pelo botão **Criar administrador** cria o perfil com
+  `role = admin`; os próximos usuários devem ser criados por um administrador.

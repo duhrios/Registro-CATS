@@ -127,8 +127,7 @@ router.get("/auth/bootstrap/status", async (req: Request, res: Response) => {
   try {
     const { count, error } = await supabase
       .from("staff_profiles")
-      .select("user_id", { count: "exact", head: true })
-      .eq("role", "admin");
+      .select("user_id", { count: "exact", head: true });
     if (error) throw error;
 
     res.json({ available: (count ?? 0) === 0 });
@@ -179,8 +178,7 @@ router.post("/auth/bootstrap", async (req: Request, res: Response) => {
   try {
     const { count, error: countError } = await supabase
       .from("staff_profiles")
-      .select("user_id", { count: "exact", head: true })
-      .eq("role", "admin");
+      .select("user_id", { count: "exact", head: true });
     if (countError) throw countError;
     if ((count ?? 0) > 0) {
       res.status(403).json({ error: "O administrador inicial já foi criado. Peça acesso a um administrador." });
