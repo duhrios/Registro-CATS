@@ -1,0 +1,98 @@
+Existe uma pasta com o nome replit módulos nela voce encontrará o que é necessário para poupar energia já no começo, salve tudo que voce fizer na pasta tambem
+
+Testes automáticos dos cadastros
+Mais importante no momento. Criar testes que confirmem que:
+•	usuário criado aparece imediatamente em Usuários cadastrados;
+•	prestador criado aparece no dashboard e na busca;
+•	os dados continuam disponíveis após atualizar a página.
+Essa é a melhor proteção contra o problema que aconteceu agora.
+2. Busca também no celular
+Atualmente o campo do cabeçalho aparece apenas em telas maiores. No celular, seria melhor manter uma busca acessível no menu inferior ou abrir um campo ao tocar no ícone de lupa.
+3. Histórico de alterações
+Registrar:
+•	quem criou, editou ou excluiu um usuário;
+•	quem cadastrou ou alterou um prestador;
+•	data e horário da alteração.
+Isso ajuda bastante em uma recepção com várias pessoas usando o sistema.
+4. Exportação e backup
+Adicionar exportação dos prestadores e visitas para CSV ou Excel, além de uma opção de backup. Assim os dados não ficam dependentes apenas do sistema.
+5. Controle de senha
+Para novos usuários, permitir:
+•	obrigar a troca da senha no primeiro acesso;
+•	bloquear ou desativar usuários temporariamente;
+•	informar quando a senha foi alterada;
+•	encerrar sessões antigas após troca de senha.
+6. Melhorias no cadastro de prestador
+Eu acrescentaria:
+•	edição completa dos dados do prestador;
+•	troca ou remoção da foto;
+•	confirmação antes de excluir;
+•	alerta visual quando o RG já estiver cadastrado;
+•	opção de adicionar observações, setor responsável ou validade do serviço.
+7. Integração real com o Google Drive
+Hoje o sistema salva apenas o link da pasta. O próximo passo seria enviar automaticamente as fotos para uma pasta organizada por prestador ou por ano/mês.
+8. Melhorias de operação
+Também vale considerar:
+•	filtros por empresa, serviço e período;
+•	paginação quando houver muitos prestadores;
+•	impressão ou geração de relatório de visitas;
+•	modo escuro;
+•	aviso quando a conexão com a API cair;
+•	correção do aviso técnico de múltiplas sessões do Supabase no navegador.
+Se eu fosse escolher apenas três próximas melhorias, faria nesta ordem:
+1.	testes automáticos dos cadastros;
+2.	histórico de alterações;
+3.	exportação/backup dos dados.
+
+
+
+
+
+
+
+
+Checking follow-up tasks
+Checking follow-up tasks
+Como o formulário foi recusado, vou respeitar a decisão e deixar o projeto exatamente como foi importado. Antes de encerrar a tarefa, vou apenas seguir o procedimento exigido para registrar possíveis próximos passos, sem implementá-los.
+2 actions
+Não houve solicitação de implementação, então não vou reiniciar os workflows nem tocar nas configurações. Vou registrar como próximos passos opcionais os três itens de maior impacto mencionados no material enviado e encerrar a tarefa de setup sem alterações no código.
+Registrando próximos passos do projeto
+Worked for 19 seconds
+Pasted-Testes-autom-ticos-dos-cadastros-Mais-importante-no-mom_1786729043448.txt
+faça essas essa lista
+32 minutes ago
+Entendi — agora você quer que eu implemente a lista do arquivo enviado. Vou ler esse arquivo e mapear rapidamente onde ficam os fluxos de usuários, prestadores, visitas, autenticação e banco antes de editar. Também vou verificar os logs dos workflows que estão falhando para não mascarar problemas de execução.
+33 actions
+A lista é ampla, mas a base já possui partes de edição, busca e CSV. Vou preservar isso e completar os pontos faltantes em camadas: persistência/auditoria e segurança no banco/API, exportação/backup, controles de usuários, busca mobile, filtros/paginação e testes automatizados. Primeiro vou instalar o lockfile existente para poder validar o estado real; não vou inventar valores do Supabase.
+15 actions
+Vou começar pelo núcleo de dados e segurança, porque auditoria, status de usuário, exportação e os testes de persistência dependem dele. Depois ajusto as telas e, por fim, reinicio/valido os workflows.
+20 actions
+A base de auditoria, exportação, status de usuários, troca obrigatória de senha, modo escuro e busca mobile já está aplicada. Vou rodar o typecheck agora para corrigir incompatibilidades antes de terminar as telas de cadastro, filtros e testes.
+15 actions
+As telas de cadastro, ficha do prestador, filtros/impressão do histórico e controles administrativos foram atualizadas. Agora vou validar novamente, adicionar os testes automatizados executáveis sem Supabase real e então verificar o app no preview.
+13 actions
+Os três testes passaram. O build do frontend falhou apenas porque o vite.config.ts exige PORT explicitamente quando executado fora do workflow; vou repetir com as variáveis do projeto, depois reiniciar os dois workflows e conferir o preview.
+4 actions
+Os builds passaram com as variáveis corretas; restou apenas um aviso de sourcemap/chunk do Vite. Vou reiniciar os workflows oficiais agora para validar o comportamento no ambiente real, sem substituir a configuração existente.
+4 actions
+A validação mostrou o bloqueio real: o frontend subiu, mas a API não pode iniciar porque este Repl não tem SUPABASE_URL, SUPABASE_ANON_KEY e SUPABASE_SERVICE_ROLE_KEY. Não vou inventar esses valores. Vou registrar isso como pendência e conferir o fluxo correto para solicitar/configurar secrets com segurança; o código e os testes locais já foram validados.
+2 actions
+SUPABASE_URLSecret provided
+SUPABASE_ANON_KEYSecret provided
+SUPABASE_SERVICE_ROLE_KEYSecret provided
+Worked for 5 minutes
+Checkpoint made26 minutes ago
+As credenciais do Supabase foram configuradas com segurança. Vou reiniciar a API, verificar se os dois serviços ficam saudáveis e capturar o preview para validar a interface após as alterações.
+4 actions
+Os dois workflows agora estão ativos e o preview de login renderiza corretamente. Vou fazer a última checagem de endpoints/build/testes, atualizar a documentação operacional do projeto e registrar claramente a única parte que continua dependente de integração externa: upload automático real para o Google Drive.
+5 actions
+A checagem final passou: API /healthz responde, os workflows estão ativos, os testes passam e os builds passam com os comandos oficiais. Vou só fechar dois detalhes de acabamento que estavam explícitos na lista — paginação do diretório e documentação atualizada — antes de encerrar.
+4 actions
+A documentação foi atualizada com os comandos, migrações e recursos novos. Vou executar a validação final após a paginação e, se estiver limpa, registrar somente o follow-up real do OAuth do Google Drive antes de concluir a tarefa.
+4 actions
+Tudo validado: typecheck, testes, builds, /api/healthz, preview e workflows estão funcionando. A única pendência fora do código local é a integração OAuth do Google Drive, que exige uma conexão externa; vou deixá-la como follow-up e encerrar a tarefa principal.
+2 actions
+O encerramento automático encontrou apenas um erro de sintaxe no texto da descrição dos follow-ups; nenhuma alteração foi perdida e a tarefa ainda não foi marcada como concluída. Vou reenviar com descrições simples e finalizar corretamente.
+
+
+continue fazendo...
