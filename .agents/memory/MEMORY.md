@@ -1,1 +1,2 @@
 - [Imported monorepo workflows](imported-monorepo-workflows.md) — preserve the root preview/API workflows when artifact import adds duplicate service ports.
+- [Imported workspace setup](imported-workspace-setup.md) — install the frozen lockfile before diagnosing services; Vite builds may require explicit runtime variables.
