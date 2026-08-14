@@ -48,6 +48,25 @@ function AuthScreen() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [pending, setPending] = useState(false);
+  const [canBootstrap, setCanBootstrap] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch('/api/auth/bootstrap/status', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = (await response.json()) as { available?: boolean };
+        if (active) setCanBootstrap(payload.available === true);
+      })
+      .catch(() => {
+        if (active) setCanBootstrap(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -152,18 +171,20 @@ function AuthScreen() {
             {pending ? 'Aguarde…' : mode === 'sign-in' ? 'Entrar' : 'Criar administrador'}
           </button>
         </form>
-        <button
-          type="button"
-          onClick={() => {
-            setMode((currentMode) => (currentMode === 'sign-in' ? 'bootstrap' : 'sign-in'));
-            setError('');
-            setMessage('');
-          }}
-          className="mt-4 w-full text-center text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-          data-testid="button-toggle-first-access"
-        >
-          {mode === 'sign-in' ? 'Primeiro acesso? Criar administrador' : 'Voltar para o login'}
-        </button>
+        {canBootstrap && (
+          <button
+            type="button"
+            onClick={() => {
+              setMode((currentMode) => (currentMode === 'sign-in' ? 'bootstrap' : 'sign-in'));
+              setError('');
+              setMessage('');
+            }}
+            className="mt-4 w-full text-center text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            data-testid="button-toggle-first-access"
+          >
+            {mode === 'sign-in' ? 'Primeiro acesso? Criar administrador' : 'Voltar para o login'}
+          </button>
+        )}
       </div>
     </div>
   );

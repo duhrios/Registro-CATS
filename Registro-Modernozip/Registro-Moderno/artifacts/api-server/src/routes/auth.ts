@@ -123,6 +123,21 @@ function validateCredentials(
   return null;
 }
 
+router.get("/auth/bootstrap/status", async (req: Request, res: Response) => {
+  try {
+    const { count, error } = await supabase
+      .from("staff_profiles")
+      .select("user_id", { count: "exact", head: true })
+      .eq("role", "admin");
+    if (error) throw error;
+
+    res.json({ available: (count ?? 0) === 0 });
+  } catch (error) {
+    req.log?.error(error);
+    res.status(500).json({ available: false });
+  }
+});
+
 router.post("/auth/login", async (req: Request, res: Response) => {
   const { username, password } = credentialsFromBody(req.body);
   if (!validUsername(username) || !passwordIsValid(password)) {
@@ -164,7 +179,8 @@ router.post("/auth/bootstrap", async (req: Request, res: Response) => {
   try {
     const { count, error: countError } = await supabase
       .from("staff_profiles")
-      .select("user_id", { count: "exact", head: true });
+      .select("user_id", { count: "exact", head: true })
+      .eq("role", "admin");
     if (countError) throw countError;
     if ((count ?? 0) > 0) {
       res.status(403).json({ error: "O administrador inicial já foi criado. Peça acesso a um administrador." });

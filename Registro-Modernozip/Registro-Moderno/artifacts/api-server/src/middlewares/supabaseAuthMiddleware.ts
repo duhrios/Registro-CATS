@@ -24,7 +24,8 @@ export async function supabaseAuthMiddleware(
     req.path === "/api/config" ||
     req.path === "/api/healthz" ||
     req.path === "/api/auth/login" ||
-    req.path === "/api/auth/bootstrap"
+    req.path === "/api/auth/bootstrap" ||
+    req.path === "/api/auth/bootstrap/status"
   ) {
     next();
     return;
