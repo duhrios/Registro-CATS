@@ -1,4 +1,9 @@
-import { createHash } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from "node:crypto";
 import { Readable } from "node:stream";
 import { google } from "googleapis";
 import { supabase } from "./supabase";
@@ -8,6 +13,10 @@ const PHOTO_PATTERN = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/;
 
 type DriveSettingsRow = {
   drive_folder_url: string | null;
+  google_cloud_project_url: string | null;
+  google_client_id: string | null;
+  google_client_secret_encrypted: string | null;
+  google_drive_refresh_token_encrypted: string | null;
   drive_last_sync_at: string | null;
   drive_last_sync_status: string | null;
   drive_last_sync_message: string | null;
@@ -30,6 +39,10 @@ type SyncFileRow = {
 
 export type DriveStatus = {
   folderUrl: string | null;
+  googleCloudProjectUrl: string | null;
+  googleClientId: string | null;
+  googleClientSecretConfigured: boolean;
+  googleRefreshTokenConfigured: boolean;
   configured: boolean;
   missingConfiguration: string[];
   lastSyncAt: string | null;
@@ -49,6 +62,48 @@ export class DriveConfigurationError extends Error {
 
 function configuredFolderUrl() {
   return process.env.GOOGLE_DRIVE_FOLDER_URL?.trim() || null;
+}
+
+function encryptionKey() {
+  const secret = process.env.SESSION_SECRET?.trim();
+  if (!secret) {
+    throw new DriveConfigurationError(
+      "Configure SESSION_SECRET no servidor para proteger as credenciais do Google Drive.",
+    );
+  }
+  return createHash("sha256").update(secret).digest();
+}
+
+export function encryptDriveSecret(value: string) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `v1:${iv.toString("base64url")}:${authTag.toString("base64url")}:${encrypted.toString("base64url")}`;
+}
+
+function decryptDriveSecret(value: string | null) {
+  if (!value) return null;
+  const [version, ivValue, authTagValue, encryptedValue] = value.split(":");
+  if (version !== "v1" || !ivValue || !authTagValue || !encryptedValue) {
+    throw new DriveConfigurationError("As credenciais salvas do Google Drive estão inválidas.");
+  }
+  try {
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      encryptionKey(),
+      Buffer.from(ivValue, "base64url"),
+    );
+    decipher.setAuthTag(Buffer.from(authTagValue, "base64url"));
+    return Buffer.concat([
+      decipher.update(Buffer.from(encryptedValue, "base64url")),
+      decipher.final(),
+    ]).toString("utf8");
+  } catch {
+    throw new DriveConfigurationError(
+      "Não foi possível desbloquear as credenciais do Google Drive. Confira o SESSION_SECRET.",
+    );
+  }
 }
 
 function folderIdFromUrl(folderUrl: string) {
@@ -72,7 +127,7 @@ function missingOAuthConfiguration() {
 async function storedSettings() {
   const { data, error } = await supabase
     .from("school_settings")
-    .select("drive_folder_url, drive_last_sync_at, drive_last_sync_status, drive_last_sync_message, drive_last_sync_count")
+    .select("drive_folder_url, google_cloud_project_url, google_client_id, google_client_secret_encrypted, google_drive_refresh_token_encrypted, drive_last_sync_at, drive_last_sync_status, drive_last_sync_message, drive_last_sync_count")
     .eq("id", true)
     .maybeSingle<DriveSettingsRow>();
   if (error) throw error;
@@ -97,32 +152,58 @@ async function updateSyncState(
   if (error) throw error;
 }
 
-function driveClient() {
-  const missing = missingOAuthConfiguration();
+async function effectiveConfiguration(settings: DriveSettingsRow | null) {
+  return {
+    folderUrl: settings?.drive_folder_url || configuredFolderUrl(),
+    projectUrl: settings?.google_cloud_project_url || process.env.GOOGLE_CLOUD_PROJECT_URL?.trim() || null,
+    clientId: settings?.google_client_id || process.env.GOOGLE_CLIENT_ID?.trim() || null,
+    clientSecret: decryptDriveSecret(settings?.google_client_secret_encrypted)
+      || process.env.GOOGLE_CLIENT_SECRET?.trim()
+      || null,
+    refreshToken: decryptDriveSecret(settings?.google_drive_refresh_token_encrypted)
+      || process.env.GOOGLE_DRIVE_REFRESH_TOKEN?.trim()
+      || null,
+  };
+}
+
+function missingOAuthConfiguration(configuration: Awaited<ReturnType<typeof effectiveConfiguration>>) {
+  return [
+    !configuration.clientId ? "GOOGLE_CLIENT_ID" : null,
+    !configuration.clientSecret ? "GOOGLE_CLIENT_SECRET" : null,
+    !configuration.refreshToken ? "GOOGLE_DRIVE_REFRESH_TOKEN" : null,
+  ].filter((value): value is string => value !== null);
+}
+
+function driveClient(configuration: Awaited<ReturnType<typeof effectiveConfiguration>>) {
+  const missing = missingOAuthConfiguration(configuration);
   if (missing.length) {
     throw new DriveConfigurationError(
       `Configure no servidor: ${missing.join(", ")}.`,
     );
   }
   const auth = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
+    configuration.clientId,
+    configuration.clientSecret,
     process.env.GOOGLE_DRIVE_REDIRECT_URI || "http://localhost:8080/api/settings/drive/callback",
   );
-  auth.setCredentials({ refresh_token: process.env.GOOGLE_DRIVE_REFRESH_TOKEN });
+  auth.setCredentials({ refresh_token: configuration.refreshToken });
   return google.drive({ version: "v3", auth });
 }
 
 export async function getDriveStatus(): Promise<DriveStatus> {
   const settings = await storedSettings();
-  const folderUrl = settings?.drive_folder_url || configuredFolderUrl();
+  const configuration = await effectiveConfiguration(settings);
   const missingConfiguration = [
-    !folderUrl ? "GOOGLE_DRIVE_FOLDER_URL" : null,
-    ...missingOAuthConfiguration(),
+    !configuration.folderUrl ? "GOOGLE_DRIVE_FOLDER_URL" : null,
+    ...missingOAuthConfiguration(configuration),
   ].filter((value): value is string => value !== null);
 
   return {
-    folderUrl,
+    folderUrl: configuration.folderUrl,
+    googleCloudProjectUrl: configuration.projectUrl,
+    googleClientId: configuration.clientId,
+    googleClientSecretConfigured: Boolean(configuration.clientSecret),
+    googleRefreshTokenConfigured: Boolean(configuration.refreshToken),
     configured: missingConfiguration.length === 0,
     missingConfiguration,
     lastSyncAt: settings?.drive_last_sync_at ?? null,
@@ -162,14 +243,15 @@ export async function syncDrivePhotos() {
   let syncedCount = 0;
   try {
     const settings = await storedSettings();
-    const folderUrl = settings?.drive_folder_url || configuredFolderUrl();
+    const configuration = await effectiveConfiguration(settings);
+    const folderUrl = configuration.folderUrl;
     if (!folderUrl) {
       throw new DriveConfigurationError(
         "Informe a URL da pasta do Google Drive na Administração da recepção.",
       );
     }
     const folderId = folderIdFromUrl(folderUrl);
-    const drive = driveClient();
+    const drive = driveClient(configuration);
 
     const { data: providers, error: providersError } = await supabase
       .from("providers")

@@ -78,6 +78,10 @@ alter table public.provider_visits enable row level security;
 create table if not exists public.school_settings (
   id boolean primary key default true check (id = true),
   drive_folder_url text,
+  google_cloud_project_url text,
+  google_client_id text,
+  google_client_secret_encrypted text,
+  google_drive_refresh_token_encrypted text,
   drive_last_sync_at timestamptz,
   drive_last_sync_status text,
   drive_last_sync_message text,
@@ -86,6 +90,10 @@ create table if not exists public.school_settings (
 );
 
 alter table public.school_settings add column if not exists drive_last_sync_at timestamptz;
+alter table public.school_settings add column if not exists google_cloud_project_url text;
+alter table public.school_settings add column if not exists google_client_id text;
+alter table public.school_settings add column if not exists google_client_secret_encrypted text;
+alter table public.school_settings add column if not exists google_drive_refresh_token_encrypted text;
 alter table public.school_settings add column if not exists drive_last_sync_status text;
 alter table public.school_settings add column if not exists drive_last_sync_message text;
 alter table public.school_settings add column if not exists drive_last_sync_count integer not null default 0;

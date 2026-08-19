@@ -1,7 +1,11 @@
 import { Router, type IRouter, type Response } from "express";
 import type { AuthenticatedRequest } from "../middlewares/supabaseAuthMiddleware";
 import { supabase } from "../lib/supabase";
-import { getDriveStatus, syncDrivePhotos } from "../lib/driveSync";
+import {
+  encryptDriveSecret,
+  getDriveStatus,
+  syncDrivePhotos,
+} from "../lib/driveSync";
 
 const router: IRouter = Router();
 
@@ -27,15 +31,28 @@ function isGoogleDriveFolderUrl(value: string) {
   }
 }
 
+function isGoogleCloudProjectUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      (url.hostname === "console.cloud.google.com" || url.hostname === "cloud.google.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
 router.get("/settings/drive", async (req: AuthenticatedRequest, res) => {
   if (!requireAdmin(req, res)) return;
-  const { data, error } = await supabase
-    .from("school_settings")
-    .select("drive_folder_url")
-    .eq("id", true)
-    .maybeSingle<{ drive_folder_url: string | null }>();
-  if (error) throw error;
-  res.json({ driveFolderUrl: data?.drive_folder_url ?? process.env.GOOGLE_DRIVE_FOLDER_URL?.trim() ?? null });
+  const status = await getDriveStatus();
+  res.json({
+    driveFolderUrl: status.folderUrl,
+    googleCloudProjectUrl: status.googleCloudProjectUrl,
+    googleClientId: status.googleClientId,
+    googleClientSecretConfigured: status.googleClientSecretConfigured,
+    googleRefreshTokenConfigured: status.googleRefreshTokenConfigured,
+  });
 });
 
 router.patch("/settings/drive", async (req: AuthenticatedRequest, res) => {
