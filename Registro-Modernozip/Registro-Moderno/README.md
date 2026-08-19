@@ -143,8 +143,9 @@ fora do Git.
 
 1. Instale Node.js 20 ou superior e pnpm.
 2. Copie o projeto para o servidor e execute `pnpm install --frozen-lockfile`.
-3. Copie `.env.example` para um arquivo protegido, preencha os valores do
-   Supabase e do Google Drive e restrinja o acesso ao arquivo.
+3. Copie `.env.example` para `.env`, preencha os valores do Supabase e do
+   Google Drive e restrinja o acesso ao arquivo. O processo da API carrega esse
+   arquivo automaticamente quando ele existe.
 4. Execute `supabase/schema.sql` no SQL Editor do projeto Supabase.
 5. Inicie a API na porta `8080` e o frontend na porta `5000`; em produção,
    use um proxy reverso para encaminhar `/api` para a API e as demais rotas para

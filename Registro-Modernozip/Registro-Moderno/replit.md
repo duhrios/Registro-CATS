@@ -14,7 +14,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - Database: execute `supabase/schema.sql` once in the Supabase SQL Editor; this creates staff profiles, provider metadata, audit logs, and access roles
 - Required secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- Safe reference: `.env.example` contains names only; configure the actual values in the PC-server environment (for example, a protected `.env` file or systemd `EnvironmentFile`)
+- Safe reference: `.env.example` contains names only; configure the actual values in the PC-server environment (for example, a protected `.env` file or systemd `EnvironmentFile`). The API loads `.env` automatically when present.
 - Authentication: the application login uses a username and password; the API maps the username to an internal Supabase Auth account and validates bearer tokens. Administrators can require a first-login password change, disable accounts, and rotate passwords with old sessions revoked.
 
 ## Import verification
