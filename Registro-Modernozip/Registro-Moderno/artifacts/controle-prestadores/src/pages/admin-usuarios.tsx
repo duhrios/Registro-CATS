@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { CheckCircle2, Download, KeyRound, Link2, Loader2, RefreshCw, Save, ShieldCheck, Trash2, UserPlus, UsersRound, History } from 'lucide-react';
+import { CheckCircle2, Download, ExternalLink, KeyRound, Link2, Loader2, RefreshCw, Save, ShieldCheck, Trash2, UserPlus, UsersRound, History } from 'lucide-react';
 import { useSupabase } from '@/lib/supabase-context';
 
 type Profile = {
@@ -39,6 +39,11 @@ export default function AdminUsuarios() {
   const [driveMessage, setDriveMessage] = useState('');
   const [driveError, setDriveError] = useState('');
   const [driveStatus, setDriveStatus] = useState<{
+    folderUrl: string | null;
+    googleCloudProjectUrl: string | null;
+    googleClientId: string | null;
+    googleClientSecretConfigured: boolean;
+    googleRefreshTokenConfigured: boolean;
     configured: boolean;
     missingConfiguration: string[];
     lastSyncAt: string | null;
@@ -250,9 +255,43 @@ export default function AdminUsuarios() {
     }
   }
 
+  async function refreshDriveStatus() {
+    setDriveError('');
+    setDriveMessage('');
+    setDriveLoading(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch('/api/settings/drive/status', {
+        headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+      });
+      const payload = await response.json() as typeof driveStatus & { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'Não foi possível verificar a configuração do Drive.');
+      setDriveStatus(payload);
+      setDriveMessage('Status do Google Drive atualizado.');
+    } catch (requestError) {
+      setDriveError(requestError instanceof Error ? requestError.message : 'Não foi possível verificar o Google Drive.');
+    } finally {
+      setDriveLoading(false);
+    }
+  }
+
   function editFor(user: Profile) {
     return userEdits[user.user_id] ?? { fullName: user.full_name, role: user.role, password: '', isActive: user.is_active, mustChangePassword: user.must_change_password };
   }
+
+  const driveChecks: Array<{ label: string; complete: boolean; detail: string }> = [
+    { label: 'Pasta do Drive', complete: Boolean(driveFolderUrl), detail: driveFolderUrl ? 'Link salvo' : 'Informe o link acima' },
+    {
+      label: 'OAuth 2.0',
+      complete: Boolean(driveStatus?.googleClientId && driveStatus.googleClientSecretConfigured),
+      detail: driveStatus?.googleClientId && driveStatus.googleClientSecretConfigured ? 'Client configurado' : 'Faltam credenciais',
+    },
+    {
+      label: 'Token de acesso',
+      complete: Boolean(driveStatus?.googleRefreshTokenConfigured),
+      detail: driveStatus?.googleRefreshTokenConfigured ? 'Refresh token configurado' : 'Falta refresh token',
+    },
+  ];
 
   function updateUserEdit(userId: string, patch: Partial<UserEdit>) {
     setUserEdits((current) => ({
@@ -486,7 +525,7 @@ export default function AdminUsuarios() {
           <input type="url" required={false} pattern="https://(www\.)?drive\.google\.com/drive(/[u]/[0-9]+)?/folders/.+" value={driveFolderUrl} onChange={(event) => setDriveFolderUrl(event.target.value)} disabled={driveLoading} placeholder="https://drive.google.com/drive/folders/..." className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-60" />
            <button type="submit" disabled={driveLoading || drivePending} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{drivePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar pasta</button>
         </form>
-         <div className="mt-4 flex flex-col gap-3 rounded-xl border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+         <div className="mt-4 flex flex-col gap-4 rounded-xl border border-border bg-background p-4">
            <div className="text-xs">
              <p className="font-semibold">{driveStatus?.configured ? 'Google Drive configurado' : 'Falta configurar o acesso ao Google Drive'}</p>
              <p className="mt-1 text-muted-foreground">
@@ -494,12 +533,30 @@ export default function AdminUsuarios() {
                  ? `Última tentativa: ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(driveStatus.lastSyncAt))}${driveStatus.lastSyncCount ? ` · ${driveStatus.lastSyncCount} arquivo(s)` : ''}`
                  : 'Nenhuma sincronização realizada ainda.'}
              </p>
-             {!driveStatus?.configured && <p className="mt-1 text-destructive">Variáveis ausentes: {driveStatus?.missingConfiguration.join(', ') || 'verificando…'}</p>}
+              {!driveStatus?.configured && <p className="mt-1 text-destructive">Variáveis ausentes: {driveStatus?.missingConfiguration.join(', ') || 'verificando…'}</p>}
            </div>
-           <button type="button" onClick={syncDriveNow} disabled={driveLoading || driveSyncPending} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-primary/30 px-4 text-xs font-semibold text-primary hover:bg-primary/5 disabled:opacity-50">
-             {driveSyncPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}Sincronizar agora
-           </button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={refreshDriveStatus} disabled={driveLoading || driveSyncPending} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold hover:border-primary/40 disabled:opacity-50">
+                {driveLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}Atualizar status
+              </button>
+              <button type="button" onClick={syncDriveNow} disabled={driveLoading || driveSyncPending || !driveStatus?.configured} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-primary/30 px-4 text-xs font-semibold text-primary hover:bg-primary/5 disabled:opacity-50">
+                {driveSyncPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}Sincronizar agora
+              </button>
+            </div>
          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {driveChecks.map(({ label, complete, detail }) => (
+              <div key={label} className="flex items-start gap-2 rounded-lg border border-border bg-background px-3 py-2.5 text-xs">
+                <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${complete ? 'text-primary' : 'text-muted-foreground/40'}`} />
+                <div><p className="font-semibold">{label}</p><p className="mt-0.5 text-muted-foreground">{detail}</p></div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-xl border border-primary/15 bg-primary/5 p-4 text-xs leading-relaxed">
+            <p className="font-semibold text-primary">Como concluir no PC-servidor</p>
+            <p className="mt-1 text-muted-foreground">Adicione os valores do OAuth no ambiente protegido do servidor usando os nomes <code className="rounded bg-background px-1 py-0.5 font-mono text-[11px]">GOOGLE_CLIENT_ID</code>, <code className="rounded bg-background px-1 py-0.5 font-mono text-[11px]">GOOGLE_CLIENT_SECRET</code> e <code className="rounded bg-background px-1 py-0.5 font-mono text-[11px]">GOOGLE_DRIVE_REFRESH_TOKEN</code>. O aplicativo nunca exibe os valores salvos.</p>
+            <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 font-semibold text-primary hover:underline">Abrir credenciais do Google Cloud <ExternalLink className="h-3 w-3" /></a>
+          </div>
         {driveError && <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{driveError}</p>}
         {driveMessage && <p className="mt-3 flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{driveMessage}</p>}
          <p className="mt-3 text-[11px] text-muted-foreground">Apenas administradores podem alterar esta configuração. O servidor precisa de OAuth 2.0 do Google Drive; o link sozinho não permite gravar arquivos.</p>

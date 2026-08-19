@@ -116,14 +116,6 @@ function folderIdFromUrl(folderUrl: string) {
   return match[1];
 }
 
-function missingOAuthConfiguration() {
-  return [
-    !process.env.GOOGLE_CLIENT_ID?.trim() ? "GOOGLE_CLIENT_ID" : null,
-    !process.env.GOOGLE_CLIENT_SECRET?.trim() ? "GOOGLE_CLIENT_SECRET" : null,
-    !process.env.GOOGLE_DRIVE_REFRESH_TOKEN?.trim() ? "GOOGLE_DRIVE_REFRESH_TOKEN" : null,
-  ].filter((value): value is string => value !== null);
-}
-
 async function storedSettings() {
   const { data, error } = await supabase
     .from("school_settings")
@@ -157,10 +149,10 @@ async function effectiveConfiguration(settings: DriveSettingsRow | null) {
     folderUrl: settings?.drive_folder_url || configuredFolderUrl(),
     projectUrl: settings?.google_cloud_project_url || process.env.GOOGLE_CLOUD_PROJECT_URL?.trim() || null,
     clientId: settings?.google_client_id || process.env.GOOGLE_CLIENT_ID?.trim() || null,
-    clientSecret: decryptDriveSecret(settings?.google_client_secret_encrypted)
+    clientSecret: decryptDriveSecret(settings?.google_client_secret_encrypted ?? null)
       || process.env.GOOGLE_CLIENT_SECRET?.trim()
       || null,
-    refreshToken: decryptDriveSecret(settings?.google_drive_refresh_token_encrypted)
+    refreshToken: decryptDriveSecret(settings?.google_drive_refresh_token_encrypted ?? null)
       || process.env.GOOGLE_DRIVE_REFRESH_TOKEN?.trim()
       || null,
   };
@@ -182,11 +174,11 @@ function driveClient(configuration: Awaited<ReturnType<typeof effectiveConfigura
     );
   }
   const auth = new google.auth.OAuth2(
-    configuration.clientId,
-    configuration.clientSecret,
+    configuration.clientId ?? undefined,
+    configuration.clientSecret ?? undefined,
     process.env.GOOGLE_DRIVE_REDIRECT_URI || "http://localhost:8080/api/settings/drive/callback",
   );
-  auth.setCredentials({ refresh_token: configuration.refreshToken });
+  auth.setCredentials({ refresh_token: configuration.refreshToken ?? undefined });
   return google.drive({ version: "v3", auth });
 }
 

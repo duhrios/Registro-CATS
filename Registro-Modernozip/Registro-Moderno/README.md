@@ -44,8 +44,8 @@ supabase/
 
 ## Configuração
 
-Configure as variáveis abaixo no ambiente seguro do servidor (Docker Compose,
-systemd, painel de hospedagem ou Secrets do provedor). O arquivo `.env.example`
+Configure as variáveis abaixo no ambiente seguro do PC-servidor (arquivo `.env`
+protegido, Docker Compose ou systemd). O arquivo `.env.example`
 é apenas uma referência; não coloque valores reais em arquivos versionados:
 
 ```text
@@ -87,14 +87,16 @@ PORT=5000 BASE_PATH=/ pnpm --filter @workspace/controle-prestadores run dev
 ```
 
 O frontend usa as rotas relativas `/api` e encaminha as requisições para a API
-na porta `8080` durante o desenvolvimento. Durante a inicialização, ele tenta
-carregar a configuração algumas vezes para aguardar a API subir; se as Secrets
-estiverem ausentes, a API permanece bloqueada e não entra em modo de teste.
+na porta `8080` durante o desenvolvimento. Em produção, publique o frontend
+atrás do mesmo servidor web/proxy da API para manter essas rotas relativas.
+Durante a inicialização, ele tenta carregar a configuração algumas vezes para
+aguardar a API subir; se as variáveis estiverem ausentes, a API permanece
+bloqueada e não entra em modo de teste.
 
 ## Configurar a pasta do Google Drive
 
-O cadastro atual guarda o link oficial da pasta para que a equipe saiba onde
-organizar as fotos. Ele ainda não envia arquivos automaticamente para o Drive.
+O cadastro guarda o link oficial da pasta e a API envia automaticamente as
+fotos novas ou alteradas para o Drive.
 
 1. Abra o [Google Drive](https://drive.google.com) com a conta da escola.
 2. Crie uma pasta exclusiva para as fotos dos prestadores, por exemplo
@@ -105,8 +107,8 @@ organizar as fotos. Ele ainda não envia arquivos automaticamente para o Drive.
 4. Copie o endereço da pasta. Ele deve começar com
    `https://drive.google.com/drive/folders/`.
 5. Entre no sistema com uma conta administradora e abra
-   **Administração da recepção → Pasta de fotos online**.
-6. Cole o endereço e clique em **Salvar link**. Somente administradores podem
+   **Administração da recepção → Sincronização com Google Drive**.
+6. Cole o endereço e clique em **Salvar pasta**. Somente administradores podem
    alterar essa configuração.
 
 O link não deve conter senha, chave ou token. Para o envio automático fora do
@@ -132,9 +134,21 @@ Sincronização com Google Drive**; o servidor também tenta sincronizar a cada
 5. Coloque o valor de `refresh_token` somente no ambiente do servidor como
    `GOOGLE_DRIVE_REFRESH_TOKEN`. Nunca o coloque no frontend ou no Git.
 
-O processo do API precisa permanecer ativo para executar o intervalo de 10
-minutos. Em hospedagem serverless, use um cron externo para chamar a rotina
-autenticada ou hospede a API como um serviço persistente.
+O processo da API precisa permanecer ativo no PC-servidor para executar o
+intervalo de 10 minutos. Configure-o como serviço persistente (systemd,
+Windows Task Scheduler/serviço ou equivalente) e mantenha o arquivo de ambiente
+fora do Git.
+
+### Instalação no PC-servidor
+
+1. Instale Node.js 20 ou superior e pnpm.
+2. Copie o projeto para o servidor e execute `pnpm install --frozen-lockfile`.
+3. Copie `.env.example` para um arquivo protegido, preencha os valores do
+   Supabase e do Google Drive e restrinja o acesso ao arquivo.
+4. Execute `supabase/schema.sql` no SQL Editor do projeto Supabase.
+5. Inicie a API na porta `8080` e o frontend na porta `5000`; em produção,
+   use um proxy reverso para encaminhar `/api` para a API e as demais rotas para
+   o frontend.
 
 ## Verificações
 

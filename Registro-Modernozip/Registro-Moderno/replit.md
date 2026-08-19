@@ -14,7 +14,7 @@ Sistema moderno de controle de prestadores para escolas: cadastra prestadores co
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - Database: execute `supabase/schema.sql` once in the Supabase SQL Editor; this creates staff profiles, provider metadata, audit logs, and access roles
 - Required secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- Safe reference: `.env.example` contains names only; configure the actual values through Replit Secrets
+- Safe reference: `.env.example` contains names only; configure the actual values in the PC-server environment (for example, a protected `.env` file or systemd `EnvironmentFile`)
 - Authentication: the application login uses a username and password; the API maps the username to an internal Supabase Auth account and validates bearer tokens. Administrators can require a first-login password change, disable accounts, and rotate passwords with old sessions revoked.
 
 ## Import verification
@@ -26,7 +26,7 @@ http://127.0.0.1:8080/api/healthz` returning `{"status":"ok"}`, and the
 frontend showing the Portuguese team access screen in the preview.
 
 The API requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and
-`SUPABASE_SERVICE_ROLE_KEY` in Replit Secrets. If the database is new, apply
+`SUPABASE_SERVICE_ROLE_KEY` in the PC-server environment. If the database is new, apply
 `supabase/schema.sql` in the Supabase SQL Editor before creating accounts.
 
 ## Stack
@@ -70,7 +70,7 @@ Interface copy is in Brazilian Portuguese.
 - Vite requires both `PORT` and `BASE_PATH`.
 - The API workflow uses port 8080 and must run alongside the frontend for data requests.
 - Never commit Supabase keys; configure them through the environment's secret store.
-- Google Drive: the folder URL is stored in **Administração da recepção → Sincronização com Google Drive**. Outside Replit, configure standard Google OAuth 2.0 with `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`, and `GOOGLE_DRIVE_REDIRECT_URI`. A manual button and a server-side 10-minute scheduler upload changed provider photos through the official Drive API.
+- Google Drive: the folder URL is stored in **Administração da recepção → Sincronização com Google Drive**. Configure standard Google OAuth 2.0 in the PC-server environment using `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`, and optionally `GOOGLE_DRIVE_REDIRECT_URI`. The admin screen shows each missing requirement without exposing secret values. A manual button and a server-side 10-minute scheduler upload changed provider photos through the official Drive API.
 - Supabase schema changes must be applied in the SQL Editor before using audit logs, extended provider fields, or password controls.
 
 ## Pointers
