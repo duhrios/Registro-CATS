@@ -53,3 +53,7 @@ export function createAuthClient() {
 export function publicSupabaseConfig() {
   return { url, anonKey };
 }
+
+export function adminSupabaseConfig() {
+  return { url, serviceRoleKey };
+}

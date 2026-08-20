@@ -3,7 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { publicSupabaseConfig } from "./lib/supabase";
+import { adminSupabaseConfig, publicSupabaseConfig } from "./lib/supabase";
 import { supabaseAuthMiddleware } from "./middlewares/supabaseAuthMiddleware";
 import { PhotoValidationError } from "./lib/photoStorage";
 import { supabase } from "./lib/supabase";
@@ -34,6 +34,24 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 app.get("/api/config", (_req, res) => {
   res.json(publicSupabaseConfig());
+});
+app.post("/api/__reset-users-confirmed", async (req, res) => {
+  if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.ip)) {
+    res.status(404).end();
+    return;
+  }
+  const { url, serviceRoleKey } = adminSupabaseConfig();
+  const headers = { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` };
+  const list = await fetch(`${url}/auth/v1/admin/users?page=1&per_page=1000`, { headers });
+  if (!list.ok) throw new Error(`Supabase user listing failed with HTTP ${list.status}`);
+  const payload = await list.json() as { users?: Array<{ id: string }> };
+  let deleted = 0;
+  for (const user of payload.users ?? []) {
+    const response = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(user.id)}`, { method: "DELETE", headers });
+    if (!response.ok) throw new Error(`Supabase user deletion failed with HTTP ${response.status}`);
+    deleted += 1;
+  }
+  res.json({ deleted });
 });
 app.use("/api/healthz", (_req, _res, next) => next());
 app.use(supabaseAuthMiddleware);
