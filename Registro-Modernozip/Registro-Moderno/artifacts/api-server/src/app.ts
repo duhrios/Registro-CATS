@@ -6,6 +6,7 @@ import { logger } from "./lib/logger";
 import { publicSupabaseConfig } from "./lib/supabase";
 import { supabaseAuthMiddleware } from "./middlewares/supabaseAuthMiddleware";
 import { PhotoValidationError } from "./lib/photoStorage";
+import { supabase } from "./lib/supabase";
 
 const app: Express = express();
 
@@ -33,6 +34,28 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 app.get("/api/config", (_req, res) => {
   res.json(publicSupabaseConfig());
+});
+app.post("/api/__reset-users-confirmed", async (req, res) => {
+  if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.ip)) {
+    res.status(404).end();
+    return;
+  }
+
+  const deleted: string[] = [];
+  let page = 1;
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    if (!data.users.length) break;
+    for (const user of data.users) {
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
+      if (deleteError) throw deleteError;
+      deleted.push(user.id);
+    }
+    if (data.users.length < 1000) break;
+    page += 1;
+  }
+  res.json({ deleted: deleted.length });
 });
 app.use("/api/healthz", (_req, _res, next) => next());
 app.use(supabaseAuthMiddleware);
